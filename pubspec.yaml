@@ -1,0 +1,37 @@
+name: leaflets
+description: A responsive mobile journal application.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  google_fonts: ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # Add the following when you have assets
+  assets:
+  - assets/images/welcome_illustration.png
+  - assets/images/mainlogo.png
+  
+#  fonts:
+#    - family: Inter
+#      fonts:
+#        - asset: assets/fonts/Inter-Regular.ttf
+#        - asset: assets/fonts/Inter-Medium.ttf
+#          weight: 500
+#        - asset: assets/fonts/Inter-SemiBold.ttf
+#          weight: 600
+#        - asset: assets/fonts/Inter-Bold.ttf
+#          weight: 700
