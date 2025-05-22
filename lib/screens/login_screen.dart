@@ -31,70 +31,138 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-                Text(
-                  'Login',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+
+                //LOGIN INSTRUCTIONS AND LOGO
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    spacing: 16,
+                    children: [
+                      Container(
+                        width: 131,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 16,
+                          children: [
+                            Text(
+                                'Login',
+                                style: TextStyle(
+                                  color: const Color(0xFF333333),
+                                  fontSize: 40,
+                                  fontFamily: 'Inria Sans',
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.80,
+                                ),
+                              ),
+
+                               Text(
+                                'Please log in with your account’s credentials.',
+                                style: TextStyle(
+                                  color: const Color(0xFF333333),
+                                  fontSize: 16,
+                                  fontStyle: FontStyle.italic,
+                                  fontFamily: 'Inria Sans',
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: -0.32,
+                                ),
+                              ),
+
+
+                          ],
+                        ),
+                      ),
+                      Image.asset('assets/logo/LoginLogo.png',
+                        height: 132,
+                        width: 132,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Please login with your account\'s credentials.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: LeafLogo(
-                    size: 80,
-                    color: const Color(0xFF9C834F),
-                  ),
-                ),
+
                 const SizedBox(height: 40),
-                TextField(
-                  controller: _usernameController,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Username',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
+
+                //PASSWORD AND USERNAME
+                Container(
+                  width: 357,
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      // Username TextFormField
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            border: InputBorder.none,
+                            labelText: 'Username',
+                            labelStyle: TextStyle(
+                              color: Color(0xFF333333),
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                              fontFamily: 'Inria Sans',
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: -0.32,
+                            ),
+                            enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
+
+                      // Password TextFormField
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            border: InputBorder.none,
+                            labelText: 'Password',
+                            labelStyle: TextStyle(
+                              color: Color(0xFF333333),
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                              fontFamily: 'Inria Sans',
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: -0.32,
+                            ),
+                              enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
+
+
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Password',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
+
+
+
                 const SizedBox(height: 24),
+
+                //LEAF IN BUTTON
                 SizedBox(
-                  width: double.infinity,
+                  width: 300,
                   child: ElevatedButton(
                     onPressed: () {
+                      Navigator.pushReplacementNamed(context, '/journal');
                       // Implement login functionality
                     },
                     style: ElevatedButton.styleFrom(
@@ -108,17 +176,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Text(
                       'LEAF-IN',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFF5F5DB),
+                        fontSize: 16,
+                        fontFamily: 'Inria Sans',
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -0.32,
                       ),
-                    ),
+                    )
                   ),
                 ),
+
+
                 const SizedBox(height: 24),
                 Text(
                   'Or Login using',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
+                    color: const Color(0xFF333333),
+                    fontSize: 16,
+                    fontStyle: FontStyle.italic,
+                    fontFamily: 'Inria Sans',
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: -0.32,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -137,10 +215,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Don\'t have an account yet? ',
+                      'Dont have an account yet? ',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
+                        color: const Color(0xFF333333),
+                        fontSize: 16,
+                        fontFamily: 'Inria Sans',
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -0.32,
                       ),
                     ),
                     GestureDetector(
@@ -149,12 +231,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       child: Text(
                         'Sign Up',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF9C834F),
+                          color: const Color(0xFF333333),
+                          fontSize: 16,
+                          fontStyle: FontStyle.italic,
+                          fontFamily: 'Inria Sans',
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: -0.32,
                         ),
-                      ),
+                      )
                     ),
                   ],
                 ),

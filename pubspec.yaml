@@ -22,9 +22,9 @@ flutter:
   
   # Add the following when you have assets
   assets:
-  - assets/images/welcome_illustration.png
-  - assets/images/mainlogo.png
-  
+  - assets/images/
+  - assets/logo/
+
 #  fonts:
 #    - family: Inter
 #      fonts:

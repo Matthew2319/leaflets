@@ -35,107 +35,188 @@ class _SignupScreenState extends State<SignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 40),
-                Text(
-                  'Sign up',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    spacing: 16,
+                    children: [
+                      Image.asset('assets/logo/SignupLogo.png',
+                        height: 132,
+                        width: 132,
+                      ),
+                      Container(
+                        width: 131,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 16,
+                          children: [
+                            Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                color: const Color(0xFF333333),
+                                fontSize: 40,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.80,
+                              ),
+                            ),
+
+                            Text(
+                              'Please sign in with your credentials.',
+                              style: TextStyle(
+                                color: const Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
+                              ),
+                            ),
+
+
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Please sign up with your credentials.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
+
+
+                const SizedBox(height: 20),
+                Container(
+                  width: 357,
+                  padding: const EdgeInsets.all(0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      // Username TextFormField
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: InputBorder.none,
+                              labelText: 'Username',
+                              labelStyle: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
+                              ),
+                              enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
+
+                      // Email TextFormField
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: InputBorder.none,
+                              labelText: 'Email',
+                              labelStyle: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
+                              ),
+                              enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
+
+                      // Password TextFormField
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: InputBorder.none,
+                              labelText: 'Password',
+                              labelStyle: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
+                              ),
+                              enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
+
+                      // Confirm Password TextFormField
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: InputBorder.none,
+                              labelText: 'Confirm Password',
+                              labelStyle: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
+                              ),
+                              enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
+
+
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                Center(
-                  child: LeafLogo(
-                    size: 80,
-                    color: const Color(0xFF9C834F),
-                  ),
-                ),
-                const SizedBox(height: 40),
-                TextField(
-                  controller: _usernameController,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Username',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Email',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Password',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _confirmPasswordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Confirm Password',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
+
+
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
                       // Implement signup functionality
+                      Navigator.pushReplacementNamed(context, '/journal');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF9C834F),
@@ -148,9 +229,13 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: const Text(
                       'START WRITING',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFF5F5DB),
+                        fontSize: 16,
+                        fontFamily: 'Inria Sans',
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -0.32,
                       ),
-                    ),
+                    )
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -159,9 +244,13 @@ class _SignupScreenState extends State<SignupScreen> {
                   children: [
                     Text(
                       'Already have an account? ',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
+                        color: const Color(0xFF333333),
+                        fontSize: 16,
+                        fontFamily: 'Inria Sans',
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -0.32,
                       ),
                     ),
                     GestureDetector(
@@ -170,12 +259,16 @@ class _SignupScreenState extends State<SignupScreen> {
                       },
                       child: Text(
                         'Login',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF9C834F),
+                          color: const Color(0xFF333333),
+                          fontSize: 16,
+                          fontStyle: FontStyle.italic,
+                          fontFamily: 'Inria Sans',
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: -0.32,
                         ),
-                      ),
+                      )
                     ),
                   ],
                 ),

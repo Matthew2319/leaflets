@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/journal_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
@@ -38,6 +39,7 @@ class LeafletsApp extends StatelessWidget {
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
+        '/journal': (context) => const JournalPage(),
       },
     );
   }
