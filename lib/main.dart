@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:leaflets/screens/journal_entry_page.dart';
 import 'package:leaflets/screens/note_entry_page.dart';
 import 'package:leaflets/screens/task_entry_page.dart';
@@ -12,8 +14,11 @@ import 'screens/notes_page.dart';
 import 'screens/folders_page.dart';
 import 'screens/tasks_page.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
