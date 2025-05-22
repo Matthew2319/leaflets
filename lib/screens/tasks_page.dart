@@ -1,72 +1,78 @@
 import 'package:flutter/material.dart';
-import '../models/journal_entry.dart';
+import '../models/task.dart';
 import '../widgets/leaf_logo.dart';
-import '../widgets/journal_entry_card.dart';
-import 'journal_entry_page.dart';
+import '../widgets/task_card.dart';
+import 'task_entry_page.dart';
 
-class JournalPage extends StatefulWidget {
-  const JournalPage({super.key});
+class TasksPage extends StatefulWidget {
+  const TasksPage({super.key});
 
   @override
-  State<JournalPage> createState() => _JournalPageState();
+  State<TasksPage> createState() => _TasksPageState();
 }
 
-class _JournalPageState extends State<JournalPage> {
+class _TasksPageState extends State<TasksPage> {
   // This would typically come from a database or state management solution
-  // For now, we'll use a simple list that can be toggled for demonstration
-  List<JournalEntry> _journalEntries = [];
-  bool _showEntries = false; // Toggle this for demo purposes
+  List<Task> _tasks = [];
+  bool _showTasks = false; // Toggle this for demo purposes
 
   @override
   void initState() {
     super.initState();
-    // Simulate loading entries
-    _loadJournalEntries();
+    // Simulate loading tasks
+    _loadTasks();
   }
 
-  void _loadJournalEntries() {
-    // This would typically fetch from a database
-    if (_showEntries) {
-      _journalEntries = [
-        JournalEntry(
+  void _loadTasks() {
+    if (_showTasks) {
+      final date = DateTime(2023, 11, 14); // November 14, 2023 (Wednesday)
+      
+      _tasks = [
+        Task(
           id: '1',
-          title: 'Log Title #1',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          title: 'Title',
+          date: date,
+          subTasks: [
+            SubTask(id: '1-1', title: 'Task Page'),
+            SubTask(id: '1-2', title: 'Making the Writing Pages'),
+            SubTask(id: '1-3', title: '"How do you feel prompt"'),
+            SubTask(id: '1-4', title: 'THE BACKEND'),
+          ],
         ),
-        JournalEntry(
+        Task(
           id: '2',
-          title: 'Log Title #2',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 2)),
-        ),
-        JournalEntry(
-          id: '3',
-          title: 'Log Title #3',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        ),
-        JournalEntry(
-          id: '4',
-          title: 'Log Title #4',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 4)),
+          title: 'Back End',
+          date: date,
+          subTasks: [
+            SubTask(id: '2-1', title: 'Database'),
+            SubTask(id: '2-2', title: 'Login & Regis'),
+            SubTask(id: '2-3', title: 'Notes Pages'),
+          ],
         ),
       ];
     } else {
-      _journalEntries = [];
+      _tasks = [];
     }
   }
 
   // For demo purposes - toggle between empty and filled states
-  void _toggleEntries() {
+  void _toggleTasks() {
     setState(() {
-      _showEntries = !_showEntries;
-      _loadJournalEntries();
+      _showTasks = !_showTasks;
+      _loadTasks();
+    });
+  }
+
+  void _toggleSubTaskCompletion(String taskId, String subTaskId) {
+    setState(() {
+      final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
+      if (taskIndex != -1) {
+        final subTaskIndex = _tasks[taskIndex].subTasks.indexWhere((subTask) => subTask.id == subTaskId);
+        if (subTaskIndex != -1) {
+          _tasks[taskIndex].subTasks[subTaskIndex].isCompleted = 
+            !_tasks[taskIndex].subTasks[subTaskIndex].isCompleted;
+        }
+      }
     });
   }
 
@@ -80,11 +86,11 @@ class _JournalPageState extends State<JournalPage> {
             // Header
             _buildHeader(),
             
-            // Main content - either empty state or journal entries
+            // Main content - either empty state or tasks
             Expanded(
-              child: _journalEntries.isEmpty
+              child: _tasks.isEmpty
                   ? _buildEmptyState()
-                  : _buildJournalEntries(),
+                  : _buildTasksList(),
             ),
             
             // Search bar
@@ -98,39 +104,36 @@ class _JournalPageState extends State<JournalPage> {
     );
   }
 
-
   //LOGO AND PAGE NAME
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          Image.asset('assets/logo/LoginLogo.png',
-            height: 52,
-            width: 52,
-          ),
-          Text(
-            'JOURNALS',
-            style: TextStyle(
-              color: const Color(0xFF9C834F),
-              fontSize: 40,
-              fontFamily: 'Inria Sans',
-              fontWeight: FontWeight.w700,
-              letterSpacing: -1.60,
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            Image.asset('assets/logo/LoginLogo.png',
+              height: 52,
+              width: 52,
             ),
-          ),
-          SizedBox(width: 60)
-        ],
-      )
+            Text(
+              'TASKS',
+              style: TextStyle(
+                color: const Color(0xFF9C834F),
+                fontSize: 40,
+                fontFamily: 'Inria Sans',
+                fontWeight: FontWeight.w700,
+                letterSpacing: -1.60,
+              ),
+            ),
+            SizedBox(width: 144)
+          ],
+        )
     );
   }
 
-
-  //IF EMPTY WILL SHOW THIS
   Widget _buildEmptyState() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -139,7 +142,7 @@ class _JournalPageState extends State<JournalPage> {
         children: [
           // Journal illustration
           Image.asset(
-            'assets/images/JournalsIllus.png',
+            'assets/images/TasksIllus.png',
             height: 240,
             // If you don't have the image yet, use a placeholder
             errorBuilder: (context, error, stackTrace) {
@@ -227,7 +230,7 @@ class _JournalPageState extends State<JournalPage> {
           SizedBox(
             width: 296,
             child: Text(
-              'Create your personal journal.      Tap the plus button to get started.',
+              'Create your personal task.      Tap the plus button to get started.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: const Color(0xFF333333),
@@ -239,34 +242,42 @@ class _JournalPageState extends State<JournalPage> {
             ),
           ),
 
-
           // For demo purposes - button to toggle between states
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _toggleEntries,
+            onPressed: _toggleTasks,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF9C834F),
             ),
-            child: Text('Toggle Entries (Demo)'),
+            child: Text('Toggle Tasks (Demo)'),
           ),
         ],
       ),
     );
   }
 
-
-//SEARCH BAR
-  Widget _buildJournalEntries() {
+  //SEARCH BAR
+  Widget _buildTasksList() {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      itemCount: _journalEntries.length,
+      padding: const EdgeInsets.all(16.0),
+      itemCount: _tasks.length,
       itemBuilder: (context, index) {
-        final entry = _journalEntries[index];
-        return JournalEntryCard(entry: entry);
+        final task = _tasks[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: TaskCard(
+            task: task,
+            onToggleSubTask: _toggleSubTaskCompletion,
+            onAddSubTask: () {
+              // Implement add subtask functionality
+            },
+          ),
+        );
       },
     );
   }
+
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -332,8 +343,7 @@ class _JournalPageState extends State<JournalPage> {
     );
   }
 
-
-//NAVIGATION BAR
+  //NAVIGATION BAR
   Widget _buildNavigationBar() {
     return Container(
       width: 320,
@@ -413,11 +423,14 @@ class _JournalPageState extends State<JournalPage> {
                 child: IconButton(
                   icon: Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
                   onPressed: () {
-                    // Navigate to journal entry page
+                    // Navigate to task entry page
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const JournalEntryPage()),
-                    );
+                      MaterialPageRoute(builder: (context) => const TaskEntryPage()),
+                    ).then((_) {
+                      // Refresh tasks when returning from task entry page
+                      _loadTasks();
+                    });
                   },
                 ),
               ),
@@ -430,6 +443,4 @@ class _JournalPageState extends State<JournalPage> {
       ),
     );
   }
-
-
 }

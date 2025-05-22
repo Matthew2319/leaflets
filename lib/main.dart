@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:leaflets/screens/journal_entry_page.dart';
+import 'package:leaflets/screens/note_entry_page.dart';
+import 'package:leaflets/screens/task_entry_page.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/journal_page.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'screens/notes_page.dart';
+import 'screens/folders_page.dart';
+import 'screens/tasks_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +46,12 @@ class LeafletsApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
         '/journal': (context) => const JournalPage(),
+        '/notes': (context) => const NotesPage(),
+        '/folders': (context) => const FoldersPage(),
+        '/tasks': (context) => const TasksPage(),
+        '/journalentry': (context) => const JournalEntryPage(),
+        '/noteentry': (context) => const NoteEntryPage(),
+        '/taskentry': (context) => const TaskEntryPage(),
       },
     );
   }
