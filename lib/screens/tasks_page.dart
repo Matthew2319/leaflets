@@ -128,7 +128,17 @@ class _TasksPageState extends State<TasksPage> {
                 letterSpacing: -1.60,
               ),
             ),
-            SizedBox(width: 144)
+            SizedBox(width: 84),
+            IconButton(
+              icon: Icon(
+                Icons.folder_outlined,
+                color: const Color(0xFF9C834F),
+                size: 32,
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/folders');
+              },
+            ),
           ],
         )
     );
@@ -259,20 +269,23 @@ class _TasksPageState extends State<TasksPage> {
 
   //SEARCH BAR
   Widget _buildTasksList() {
-    return ListView.builder(
+    return GridView.builder(
       padding: const EdgeInsets.all(16.0),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16.0,
+        mainAxisSpacing: 16.0,
+        childAspectRatio: 1.0,
+      ),
       itemCount: _tasks.length,
       itemBuilder: (context, index) {
         final task = _tasks[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: TaskCard(
-            task: task,
-            onToggleSubTask: _toggleSubTaskCompletion,
-            onAddSubTask: () {
-              // Implement add subtask functionality
-            },
-          ),
+        return TaskCard(
+          task: task,
+          onToggleSubTask: _toggleSubTaskCompletion,
+          onAddSubTask: () {
+            // Implement add subtask functionality
+          },
         );
       },
     );

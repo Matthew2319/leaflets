@@ -123,7 +123,17 @@ class _JournalPageState extends State<JournalPage> {
               letterSpacing: -1.60,
             ),
           ),
-          SizedBox(width: 60)
+          SizedBox(width: 84),
+          IconButton(
+            icon: Icon(
+              Icons.folder_outlined,
+              color: const Color(0xFF9C834F),
+              size: 32,
+            ),
+            onPressed: () {
+              Navigator.pushNamed(context, '/folders');
+            },
+          ),
         ],
       )
     );
