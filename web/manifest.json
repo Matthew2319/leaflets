@@ -1,6 +1,6 @@
 {
-    "name": "leaflet",
-    "short_name": "leaflet",
+    "name": "leaflets",
+    "short_name": "leaflets",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

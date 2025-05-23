@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/leaf_logo.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -214,9 +216,40 @@ class _SignupScreenState extends State<SignupScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Implement signup functionality
-                      Navigator.pushReplacementNamed(context, '/journal');
+                    onPressed: () async {
+                      final username = _usernameController.text.trim();
+                      final email = _emailController.text.trim();
+                      final password = _passwordController.text.trim();
+                      final confirmPassword = _confirmPasswordController.text.trim();
+
+                      if (password != confirmPassword) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Passwords do not match!')),
+                        );
+                        return;
+                      }
+
+                      try {
+                        UserCredential userCredential = await FirebaseAuth.instance
+                            .createUserWithEmailAndPassword(email: email, password: password);
+
+                        // Optionally, update the display name
+                        await userCredential.user?.updateDisplayName(username);
+
+                        // Store user profile in Firestore
+                        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+                          'username': username,
+                          'email': email,
+                          'createdAt': FieldValue.serverTimestamp(),
+                        });
+
+                        // Navigate to journal screen
+                        Navigator.pushReplacementNamed(context, '/journal');
+                      } on FirebaseAuthException catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.message ?? 'Signup failed')),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF9C834F),

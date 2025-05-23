@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/leaf_logo.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -62,7 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
 
                                Text(
-                                'Please log in with your account’s credentials.',
+                                'Please log in with your credentials.',
                                 style: TextStyle(
                                   color: const Color(0xFF333333),
                                   fontSize: 16,
@@ -161,9 +163,49 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: 300,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/journal');
-                      // Implement login functionality
+                    onPressed: () async {
+                      final input = _usernameController.text.trim();
+                      final password = _passwordController.text.trim();
+
+                      String? email;
+                      // Check if input is an email
+                      if (input.contains('@') && input.contains('.')) {
+                        email = input;
+                      } else {
+                        // Lookup email by username in Firestore
+                        try {
+                          final query = await FirebaseFirestore.instance
+                              .collection('users')
+                              .where('username', isEqualTo: input)
+                              .limit(1)
+                              .get();
+                          if (query.docs.isNotEmpty) {
+                            email = query.docs.first['email'];
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('No user found with that username.')),
+                            );
+                            return;
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error looking up username.')),
+                          );
+                          return;
+                        }
+                      }
+
+                      try {
+                        await FirebaseAuth.instance.signInWithEmailAndPassword(
+                          email: email!,
+                          password: password,
+                        );
+                        Navigator.pushReplacementNamed(context, '/journal');
+                      } on FirebaseAuthException catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.message ?? 'Login failed')),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF9C834F),
