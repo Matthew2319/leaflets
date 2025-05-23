@@ -88,16 +88,23 @@ class _SignupScreenState extends State<SignupScreen> {
         print('Debug - Display name updated');
 
         // Store additional user data in Firestore
+        print('Debug - About to write to Firestore');
         await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
           'username': username,
           'email': email,
+          'password': password,
+          'uid': userCredential.user!.uid,
           'createdAt': FieldValue.serverTimestamp(),
         });
         print('Debug - User data stored in Firestore');
 
-        // Navigate to journal screen
+        // Show success prompt and redirect to login
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/journal');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Signup successful! Please log in.')),
+          );
+          await Future.delayed(const Duration(seconds: 1));
+          Navigator.pushReplacementNamed(context, '/login');
         }
       }
     } on FirebaseAuthException catch (e) {

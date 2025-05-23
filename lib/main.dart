@@ -37,6 +37,8 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   
+  await FirebaseFirestore.instance.collection('test').add({'test': 'value'});
+
   runApp(const LeafletsApp());
 }
 
