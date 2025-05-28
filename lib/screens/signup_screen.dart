@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../widgets/leaf_logo.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -15,7 +16,38 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   bool _isLoading = false;
+
+  // Add SharedPreferences instance
+  late SharedPreferences _prefs;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPrefs();
+  }
+
+  Future<void> _initPrefs() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
+  // Hash password using SHA-256
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  Future<bool> _isEmailAlreadyRegistered(String email) async {
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('tbl_users')
+        .where('email', isEqualTo: email)
+        .get();
+    
+    return querySnapshot.docs.isNotEmpty;
+  }
 
   @override
   void dispose() {
@@ -23,23 +55,29 @@ class _SignupScreenState extends State<SignupScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSignup() async {
+    final firstName = _firstNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
     print('Debug - Form Values:');
+    print('First Name: $firstName');
+    print('Last Name: $lastName');
     print('Username: $username');
     print('Email: $email');
     print('Password length: ${password.length}');
     print('Confirm Password length: ${confirmPassword.length}');
 
     // Validation
-    if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (firstName.isEmpty || lastName.isEmpty || username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       print('Debug - Empty fields detected');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
@@ -68,74 +106,60 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      print('Debug - Attempting to create user with Firebase');
+      print('Debug - Starting signup process');
       
-      // Configure Firebase Auth settings for this operation
-      await FirebaseAuth.instance.setSettings(
-        appVerificationDisabledForTesting: true,
-      );
-      
-      // Create user with email and password
-      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      if (userCredential.user != null) {
-        print('Debug - User created successfully');
-        // Update display name
-        await userCredential.user!.updateDisplayName(username);
-        print('Debug - Display name updated');
-
-        // Store additional user data in Firestore
-        print('Debug - About to write to Firestore');
-        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-          'username': username,
-          'email': email,
-          'password': password,
-          'uid': userCredential.user!.uid,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        print('Debug - User data stored in Firestore');
-
-        // Show success prompt and redirect to login
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Signup successful! Please log in.')),
-          );
-          await Future.delayed(const Duration(seconds: 1));
-          Navigator.pushReplacementNamed(context, '/login');
-        }
+      // Check if email is already registered
+      if (await _isEmailAlreadyRegistered(email)) {
+        throw Exception('email-already-in-use');
       }
-    } on FirebaseAuthException catch (e) {
-      print('Debug - Firebase Auth Error: ${e.code}');
+
+      // Hash the password
+      final hashedPassword = _hashPassword(password);
+      
+      // Generate a unique user ID
+      final String userId = FirebaseFirestore.instance.collection('tbl_users').doc().id;
+
+      // Prepare user data
+      final userData = {
+        'first_name': firstName,
+        'last_name': lastName,
+        'username': username,
+        'email': email,
+        'password': hashedPassword, // Store hashed password
+        'uid': userId,
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+      
+      print('Debug - Saving to Firestore');
+      await FirebaseFirestore.instance
+          .collection('tbl_users')
+          .doc(userId)
+          .set(userData);
+      
+      // Save user session locally
+      await _prefs.setString('user_id', userId);
+      await _prefs.setString('username', username);
+      await _prefs.setString('email', email);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Signup successful! Please log in.')),
+        );
+        await Future.delayed(const Duration(seconds: 1));
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } catch (e) {
+      print('Debug - Error: $e');
       String message;
-      switch (e.code) {
-        case 'email-already-in-use':
-          message = 'This email is already registered';
-          break;
-        case 'invalid-email':
-          message = 'Invalid email address';
-          break;
-        case 'operation-not-allowed':
-          message = 'Email/password accounts are not enabled';
-          break;
-        case 'weak-password':
-          message = 'Password is too weak';
-          break;
-        default:
-          message = e.message ?? 'An error occurred during signup';
+      if (e.toString().contains('email-already-in-use')) {
+        message = 'This email is already registered';
+      } else {
+        message = 'An unexpected error occurred: $e';
       }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
-        );
-      }
-    } catch (e) {
-      print('Debug - Unexpected error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An unexpected error occurred: $e')),
         );
       }
     } finally {
@@ -175,7 +199,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       Container(
                         width: 131,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Column(
+                        child: const Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,7 +208,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             Text(
                               'Sign Up',
                               style: TextStyle(
-                                color: const Color(0xFF333333),
+                                color: Color(0xFF333333),
                                 fontSize: 40,
                                 fontFamily: 'Inria Sans',
                                 fontWeight: FontWeight.w700,
@@ -195,7 +219,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             Text(
                               'Please sign in with your credentials.',
                               style: TextStyle(
-                                color: const Color(0xFF333333),
+                                color: Color(0xFF333333),
                                 fontSize: 16,
                                 fontStyle: FontStyle.italic,
                                 fontFamily: 'Inria Sans',
@@ -221,6 +245,62 @@ class _SignupScreenState extends State<SignupScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+
+                      // First Name TextFormField
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          controller: _firstNameController,
+                          keyboardType: TextInputType.text,
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: InputBorder.none,
+                              labelText: 'First Name',
+                              labelStyle: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
+                              ),
+                              enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
+
+                      // Last Name TextFormField
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextFormField(
+                          controller: _lastNameController,
+                          keyboardType: TextInputType.text,
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              border: InputBorder.none,
+                              labelText: 'Last Name',
+                              labelStyle: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
+                              ),
+                              enabledBorder: InputBorder.none
+                          ),
+                        ),
+                      ),
 
                       // Username TextFormField
                       Container(
@@ -378,11 +458,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'Already have an account? ',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: const Color(0xFF333333),
+                        color: Color(0xFF333333),
                         fontSize: 16,
                         fontFamily: 'Inria Sans',
                         fontWeight: FontWeight.w400,
@@ -393,11 +473,11 @@ class _SignupScreenState extends State<SignupScreen> {
                       onTap: () {
                         Navigator.pushReplacementNamed(context, '/login');
                       },
-                      child: Text(
+                      child: const Text(
                         'Login',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: const Color(0xFF333333),
+                          color: Color(0xFF333333),
                           fontSize: 16,
                           fontStyle: FontStyle.italic,
                           fontFamily: 'Inria Sans',

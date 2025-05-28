@@ -33,34 +33,77 @@ class TaskCard extends StatelessWidget {
           // Task header
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Date and folder info
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       task.formattedDate.toLowerCase(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: Colors.grey,
                       ),
                     ),
-                    Text(
-                      task.title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    if (task.folderId != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5DB),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF9C834F),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          task.folderId!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9C834F),
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
-                IconButton(
-                  icon: Icon(
-                    Icons.add_circle_outline,
-                    color: const Color(0xFF9C834F),
-                  ),
-                  onPressed: onAddSubTask,
+                const SizedBox(height: 8),
+                // Title and actions
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          task.title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (task.isBookmark)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8.0),
+                            child: Icon(
+                              Icons.bookmark,
+                              size: 20,
+                              color: Color(0xFF9C834F),
+                            ),
+                          ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.add_circle_outline,
+                        color: Color(0xFF9C834F),
+                      ),
+                      onPressed: onAddSubTask,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -96,10 +139,10 @@ class TaskCard extends StatelessWidget {
                 ),
               ),
               child: subTask.isCompleted
-                  ? Icon(
+                  ? const Icon(
                       Icons.check,
                       size: 16,
-                      color: const Color(0xFF9C834F),
+                      color: Color(0xFF9C834F),
                     )
                   : null,
             ),

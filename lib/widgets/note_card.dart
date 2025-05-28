@@ -30,7 +30,7 @@ class NoteCard extends StatelessWidget {
           children: [
             Text(
               note.title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
@@ -42,7 +42,7 @@ class NoteCard extends StatelessWidget {
             Expanded(
               child: Text(
                 note.content,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   color: Colors.black87,
                 ),
@@ -53,7 +53,7 @@ class NoteCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               note.formattedDate,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: Colors.black54,
               ),

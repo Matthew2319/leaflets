@@ -48,15 +48,15 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
                     // Title field
                     TextField(
                       controller: _titleController,
-                      style: TextStyle(
-                        color: const Color(0xFF9C834F),
+                      style: const TextStyle(
+                        color: Color(0xFF9C834F),
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'TITLE',
                         hintStyle: TextStyle(
-                          color: const Color(0xFF9C834F),
+                          color: Color(0xFF9C834F),
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -74,11 +74,11 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
                     Expanded(
                       child: TextField(
                         controller: _contentController,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
                         ),
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: 'Start Writing...',
                           hintStyle: TextStyle(
                             color: Colors.black54,
@@ -115,9 +115,9 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
                 children: [
                   // Back button
                   IconButton(
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.arrow_back,
-                      color: const Color(0xFF9C834F),
+                      color: Color(0xFF9C834F),
                     ),
                     onPressed: () {
                       Navigator.pop(context);
@@ -127,8 +127,8 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
                   // Date
                   Text(
                     _getCurrentDate(),
-                    style: TextStyle(
-                      color: const Color(0xFF9C834F),
+                    style: const TextStyle(
+                      color: Color(0xFF9C834F),
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -144,10 +144,10 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF9C834F),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.check_circle_outline),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text('Done'),
                       ],
                     ),

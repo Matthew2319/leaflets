@@ -3,14 +3,16 @@ class Note {
   final String title;
   final String content;
   final DateTime createdAt;
-  final String folderId;
+  final String? folderId;
+  final bool isBookmark;
 
   Note({
     required this.id,
     required this.title,
     required this.content,
     required this.createdAt,
-    required this.folderId,
+    this.folderId,
+    this.isBookmark = false,
   });
 
   // Format the date as DD/MM/YYYY

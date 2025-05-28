@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../widgets/leaf_logo.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,12 +12,81 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+  final _usernameOrEmailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  // Hash password using SHA-256
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  Future<void> _handleLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final input = _usernameOrEmailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      if (input.isEmpty || password.isEmpty) {
+        throw Exception('Please fill in all fields');
+      }
+
+      // Hash the password for comparison
+      final hashedPassword = _hashPassword(password);
+
+      // Query Firestore for user with either email or username
+      final QuerySnapshot userQuery = await FirebaseFirestore.instance
+          .collection('tbl_users')
+          .where(
+            input.contains('@') ? 'email' : 'username',
+            isEqualTo: input,
+          )
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
+        throw Exception('No account found with these credentials');
+      }
+
+      final userData = userQuery.docs.first.data() as Map<String, dynamic>;
+      
+      // Verify password
+      if (userData['password'] != hashedPassword) {
+        throw Exception('Invalid password');
+      }
+
+      // Store user session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_id', userData['uid']);
+      await prefs.setString('username', userData['username']);
+      await prefs.setString('email', userData['email']);
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/journal');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception:', '').trim())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _usernameOrEmailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -46,36 +116,33 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         width: 131,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Column(
+                        child: const Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.start,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           spacing: 16,
                           children: [
                             Text(
-                                'Login',
-                                style: TextStyle(
-                                  color: const Color(0xFF333333),
-                                  fontSize: 40,
-                                  fontFamily: 'Inria Sans',
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.80,
-                                ),
+                              'Login',
+                              style: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 40,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.80,
                               ),
-
-                               Text(
-                                'Please log in with your credentials.',
-                                style: TextStyle(
-                                  color: const Color(0xFF333333),
-                                  fontSize: 16,
-                                  fontStyle: FontStyle.italic,
-                                  fontFamily: 'Inria Sans',
-                                  fontWeight: FontWeight.w400,
-                                  letterSpacing: -0.32,
-                                ),
+                            ),
+                            Text(
+                              'Please log in with your credentials.',
+                              style: TextStyle(
+                                color: Color(0xFF333333),
+                                fontSize: 16,
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'Inria Sans',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -0.32,
                               ),
-
-
+                            ),
                           ],
                         ),
                       ),
@@ -97,8 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      // Username TextFormField
+                      // Username/Email TextFormField
                       Container(
                         width: double.infinity,
                         margin: const EdgeInsets.only(bottom: 24),
@@ -107,10 +173,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: TextFormField(
+                          controller: _usernameOrEmailController,
                           decoration: const InputDecoration(
                             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                             border: InputBorder.none,
-                            labelText: 'Username',
+                            labelText: 'Username or Email',
                             labelStyle: TextStyle(
                               color: Color(0xFF333333),
                               fontSize: 16,
@@ -132,6 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: TextFormField(
+                          controller: _passwordController,
                           obscureText: true,
                           decoration: const InputDecoration(
                             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -145,17 +213,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.w400,
                               letterSpacing: -0.32,
                             ),
-                              enabledBorder: InputBorder.none
+                            enabledBorder: InputBorder.none
                           ),
                         ),
                       ),
-
-
                     ],
                   ),
                 ),
-
-
 
                 const SizedBox(height: 24),
 
@@ -163,50 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: 300,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      final input = _usernameController.text.trim();
-                      final password = _passwordController.text.trim();
-
-                      String? email;
-                      // Check if input is an email
-                      if (input.contains('@') && input.contains('.')) {
-                        email = input;
-                      } else {
-                        // Lookup email by username in Firestore
-                        try {
-                          final query = await FirebaseFirestore.instance
-                              .collection('users')
-                              .where('username', isEqualTo: input)
-                              .limit(1)
-                              .get();
-                          if (query.docs.isNotEmpty) {
-                            email = query.docs.first['email'];
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('No user found with that username.')),
-                            );
-                            return;
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error looking up username.')),
-                          );
-                          return;
-                        }
-                      }
-
-                      try {
-                        await FirebaseAuth.instance.signInWithEmailAndPassword(
-                          email: email!,
-                          password: password,
-                        );
-                        Navigator.pushReplacementNamed(context, '/journal');
-                      } on FirebaseAuthException catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.message ?? 'Login failed')),
-                        );
-                      }
-                    },
+                    onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF9C834F),
                       foregroundColor: Colors.white,
@@ -215,25 +236,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'LEAF-IN',
-                      style: TextStyle(
-                        color: const Color(0xFFF5F5DB),
-                        fontSize: 16,
-                        fontFamily: 'Inria Sans',
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: -0.32,
-                      ),
-                    )
+                    child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'LEAF-IN',
+                          style: TextStyle(
+                            color: Color(0xFFF5F5DB),
+                            fontSize: 16,
+                            fontFamily: 'Inria Sans',
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: -0.32,
+                          ),
+                        ),
                   ),
                 ),
 
-
                 const SizedBox(height: 24),
-                Text(
+                const Text(
                   'Or Login using',
                   style: TextStyle(
-                    color: const Color(0xFF333333),
+                    color: Color(0xFF333333),
                     fontSize: 16,
                     fontStyle: FontStyle.italic,
                     fontFamily: 'Inria Sans',
@@ -256,11 +285,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
+                    const Text(
                       'Dont have an account yet? ',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: const Color(0xFF333333),
+                        color: Color(0xFF333333),
                         fontSize: 16,
                         fontFamily: 'Inria Sans',
                         fontWeight: FontWeight.w400,
@@ -271,11 +300,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       onTap: () {
                         Navigator.pushReplacementNamed(context, '/signup');
                       },
-                      child: Text(
+                      child: const Text(
                         'Sign Up',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: const Color(0xFF333333),
+                          color: Color(0xFF333333),
                           fontSize: 16,
                           fontStyle: FontStyle.italic,
                           fontFamily: 'Inria Sans',

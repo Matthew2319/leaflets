@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
-import '../models/folder.dart';
 
-class NewFolderDialog extends StatefulWidget {
-  final Function(String, FolderType) onSave;
-  final FolderType folderType;
+class EditFolderDialog extends StatefulWidget {
+  final String currentName;
+  final Function(String) onSave;
 
-  const NewFolderDialog({
+  const EditFolderDialog({
     super.key,
+    required this.currentName,
     required this.onSave,
-    required this.folderType,
   });
 
   @override
-  State<NewFolderDialog> createState() => _NewFolderDialogState();
+  State<EditFolderDialog> createState() => _EditFolderDialogState();
 }
 
-class _NewFolderDialogState extends State<NewFolderDialog> {
-  final TextEditingController _controller = TextEditingController(text: 'Unnamed Folder');
+class _EditFolderDialogState extends State<EditFolderDialog> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.currentName);
+  }
 
   @override
   void dispose() {
@@ -41,10 +46,11 @@ class _NewFolderDialogState extends State<NewFolderDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'New Folder',
+              'Edit Folder',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
               ),
             ),
             const SizedBox(height: 16),
@@ -62,6 +68,7 @@ class _NewFolderDialogState extends State<NewFolderDialog> {
                 ),
                 style: const TextStyle(
                   fontSize: 16,
+                  color: Color(0xFF333333),
                 ),
                 autofocus: true,
               ),
@@ -70,25 +77,37 @@ class _NewFolderDialogState extends State<NewFolderDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
+                TextButton.icon(
                   icon: const Icon(
                     Icons.close,
-                    color: Colors.red,
-                    size: 28,
+                    color: Color(0xFF9C834F),
+                  ),
+                  label: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Color(0xFF9C834F),
+                    ),
                   ),
                   onPressed: () {
                     Navigator.pop(context);
                   },
                 ),
-                IconButton(
+                TextButton.icon(
                   icon: const Icon(
                     Icons.check,
-                    color: Colors.green,
-                    size: 28,
+                    color: Color(0xFF9C834F),
+                  ),
+                  label: const Text(
+                    'Save',
+                    style: TextStyle(
+                      color: Color(0xFF9C834F),
+                    ),
                   ),
                   onPressed: () {
-                    widget.onSave(_controller.text, widget.folderType);
-                    Navigator.pop(context);
+                    if (_controller.text.isNotEmpty) {
+                      widget.onSave(_controller.text);
+                      Navigator.pop(context);
+                    }
                   },
                 ),
               ],
@@ -98,4 +117,4 @@ class _NewFolderDialogState extends State<NewFolderDialog> {
       ),
     );
   }
-}
+} 

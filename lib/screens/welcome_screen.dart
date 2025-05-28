@@ -23,7 +23,7 @@ class WelcomeScreen extends StatelessWidget {
                   height: 50,
                   ),
                   const SizedBox(width: 8),
-                  Text(
+                  const Text(
                     'Leaflets',
                     style: TextStyle(
                       color: Colors.white,
@@ -60,7 +60,7 @@ class WelcomeScreen extends StatelessWidget {
 
 
                     //TEXT BELOW ILLUSTRATION
-                    Container(
+                    const SizedBox(
                       width: 296,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -68,7 +68,7 @@ class WelcomeScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: 8,
                         children: [
-                          Container(
+                          SizedBox(
                             width: 173,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -81,7 +81,7 @@ class WelcomeScreen extends StatelessWidget {
                                   child: Text(
                                     'Your Lofty',
                                     style: TextStyle(
-                                      color: const Color(0xFF333333),
+                                      color: Color(0xFF333333),
                                       fontSize: 36,
                                       fontFamily: 'Inria Sans',
                                       fontWeight: FontWeight.w700,
@@ -94,7 +94,7 @@ class WelcomeScreen extends StatelessWidget {
                                   child: Text(
                                     'NOTEBOOK',
                                     style: TextStyle(
-                                      color: const Color(0xFFF5F5DB),
+                                      color: Color(0xFFF5F5DB),
                                       fontSize: 28,
                                       fontStyle: FontStyle.italic,
                                       fontFamily: 'Inria Sans',
@@ -111,7 +111,7 @@ class WelcomeScreen extends StatelessWidget {
                             child: Text(
                               'Encapsulate your thoughts in this comfortable space.',
                               style: TextStyle(
-                                color: const Color(0xFF333333),
+                                color: Color(0xFF333333),
                                 fontSize: 16,
                                 fontStyle: FontStyle.italic,
                                 fontFamily: 'Inria Sans',

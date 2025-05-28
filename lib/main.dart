@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:leaflets/screens/journal_entry_page.dart';
 import 'package:leaflets/screens/note_entry_page.dart';
 import 'package:leaflets/screens/task_entry_page.dart';
@@ -15,6 +13,7 @@ import 'screens/notes_page.dart';
 import 'screens/folders_page.dart';
 import 'screens/tasks_page.dart';
 import 'firebase_options.dart';
+import 'models/folder.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,20 +23,21 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Configure reCAPTCHA verification
-  await FirebaseAuth.instance.setSettings(
-    appVerificationDisabledForTesting: false, // Set to true only for testing
-    phoneNumber: null,
-    smsCode: null,
-    forceRecaptchaFlow: false,
-  );
+  // Remove or comment out the reCAPTCHA settings for now
+  // await FirebaseAuth.instance.setSettings(
+  //   appVerificationDisabledForTesting: false,
+  //   phoneNumber: null,
+  //   smsCode: null,
+  //   forceRecaptchaFlow: false,
+  // );
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
   
-  await FirebaseFirestore.instance.collection('test').add({'test': 'value'});
+  // Remove this test line as it might interfere with initialization
+  // await FirebaseFirestore.instance.collection('test').add({'test': 'value'});
 
   runApp(const LeafletsApp());
 }
@@ -68,7 +68,10 @@ class LeafletsApp extends StatelessWidget {
         '/signup': (context) => const SignupScreen(),
         '/journal': (context) => const JournalPage(),
         '/notes': (context) => const NotesPage(),
-        '/folders': (context) => const FoldersPage(),
+        '/folders': (context) => const FoldersPage(
+          folderType: FolderType.journal,
+          title: 'FOLDERS',
+        ),
         '/tasks': (context) => const TasksPage(),
         '/journalentry': (context) => const JournalEntryPage(),
         '/noteentry': (context) => const NoteEntryPage(),

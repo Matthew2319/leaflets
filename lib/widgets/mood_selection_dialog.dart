@@ -58,7 +58,7 @@ class _MoodSelectionDialogState extends State<MoodSelectionDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            const Text(
               'How are you feeling?',
               style: TextStyle(
                 fontSize: 18,
@@ -69,9 +69,9 @@ class _MoodSelectionDialogState extends State<MoodSelectionDialog> {
             const SizedBox(height: 24),
             Text(
               MoodData.moods[_moodIndex].emoji,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 48,
-                color: const Color(0xFF9C834F),
+                color: Color(0xFF9C834F),
               ),
             ),
             const SizedBox(height: 16),
@@ -99,7 +99,7 @@ class _MoodSelectionDialogState extends State<MoodSelectionDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.close,
                     color: Colors.red,
                     size: 28,
@@ -107,7 +107,7 @@ class _MoodSelectionDialogState extends State<MoodSelectionDialog> {
                   onPressed: widget.onCancel,
                 ),
                 IconButton(
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.check,
                     color: Colors.green,
                     size: 28,
@@ -138,16 +138,16 @@ class _MoodSelectionDialogState extends State<MoodSelectionDialog> {
         value: _selectedRelatedMood.isEmpty ? null : _selectedRelatedMood,
         hint: Text(
           _selectedMood,
-          style: TextStyle(
-            color: const Color(0xFF9C834F),
+          style: const TextStyle(
+            color: Color(0xFF9C834F),
           ),
         ),
         isExpanded: true,
-        icon: Icon(
+        icon: const Icon(
           Icons.arrow_drop_down,
-          color: const Color(0xFF9C834F),
+          color: Color(0xFF9C834F),
         ),
-        underline: SizedBox(),
+        underline: const SizedBox(),
         onChanged: (String? newValue) {
           setState(() {
             _selectedRelatedMood = newValue ?? '';
@@ -158,8 +158,8 @@ class _MoodSelectionDialogState extends State<MoodSelectionDialog> {
             value: value,
             child: Text(
               value,
-              style: TextStyle(
-                color: const Color(0xFF9C834F),
+              style: const TextStyle(
+                color: Color(0xFF9C834F),
               ),
             ),
           );
@@ -211,7 +211,7 @@ class RoundedRectangleSliderThumbShape extends SliderComponentShape {
       ..style = PaintingStyle.fill;
 
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, Radius.circular(4.0)),
+      RRect.fromRectAndRadius(rect, const Radius.circular(4.0)),
       paint,
     );
   }

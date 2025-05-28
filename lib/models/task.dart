@@ -3,12 +3,16 @@ class Task {
   final String title;
   final DateTime date;
   final List<SubTask> subTasks;
+  final String? folderId;
+  final bool isBookmark;
 
   Task({
     required this.id,
     required this.title,
     required this.date,
     required this.subTasks,
+    this.folderId,
+    this.isBookmark = false,
   });
 
   // Format the date as "14 NOV WEDNESDAY"

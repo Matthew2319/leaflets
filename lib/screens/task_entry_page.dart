@@ -50,7 +50,7 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
               TextField(
                 controller: _subtaskController,
                 autofocus: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: "Tap \"Enter\" to create subtasks",
                   hintStyle: TextStyle(
                     color: Colors.black54,
@@ -69,7 +69,7 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.close,
                       color: Colors.red,
                       size: 28,
@@ -79,7 +79,7 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                     },
                   ),
                   IconButton(
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.check,
                       color: Colors.green,
                       size: 28,
@@ -144,15 +144,15 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                     // Title field
                     TextField(
                       controller: _titleController,
-                      style: TextStyle(
-                        color: const Color(0xFF9C834F),
+                      style: const TextStyle(
+                        color: Color(0xFF9C834F),
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'TITLE',
                         hintStyle: TextStyle(
-                          color: const Color(0xFF9C834F),
+                          color: Color(0xFF9C834F),
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -185,14 +185,14 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
             Center(
               child: TextButton.icon(
                 onPressed: _showAddSubtaskDialog,
-                icon: Icon(
+                icon: const Icon(
                   Icons.add_circle_outline,
-                  color: const Color(0xFF9C834F),
+                  color: Color(0xFF9C834F),
                 ),
-                label: Text(
+                label: const Text(
                   'Add Task',
                   style: TextStyle(
-                    color: const Color(0xFF9C834F),
+                    color: Color(0xFF9C834F),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -216,9 +216,9 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                 children: [
                   // Back button
                   IconButton(
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.arrow_back,
-                      color: const Color(0xFF9C834F),
+                      color: Color(0xFF9C834F),
                     ),
                     onPressed: () {
                       Navigator.pop(context);
@@ -228,8 +228,8 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                   // Date
                   Text(
                     _getCurrentDate(),
-                    style: TextStyle(
-                      color: const Color(0xFF9C834F),
+                    style: const TextStyle(
+                      color: Color(0xFF9C834F),
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -245,10 +245,10 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF9C834F),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
                         Icon(Icons.check_circle_outline),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text('Done'),
                       ],
                     ),
@@ -285,10 +285,10 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                 ),
               ),
               child: subtask.isCompleted
-                  ? Icon(
+                  ? const Icon(
                       Icons.check,
                       size: 16,
-                      color: const Color(0xFF9C834F),
+                      color: Color(0xFF9C834F),
                     )
                   : null,
             ),
@@ -305,7 +305,7 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
             ),
           ),
           IconButton(
-            icon: Icon(
+            icon: const Icon(
               Icons.close,
               size: 16,
               color: Colors.grey,

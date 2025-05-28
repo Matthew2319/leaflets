@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
-import '../widgets/leaf_logo.dart';
+import '../models/folder.dart';
 import '../widgets/task_card.dart';
+import '../services/folder_service.dart';
 import 'task_entry_page.dart';
+import 'folders_page.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -12,15 +14,38 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  // This would typically come from a database or state management solution
+  final FolderService _folderService = FolderService();
   List<Task> _tasks = [];
+  List<Folder> _folders = [];
+  String? _selectedFolderId;
+  bool _isLoading = true;
   bool _showTasks = false; // Toggle this for demo purposes
 
   @override
   void initState() {
     super.initState();
-    // Simulate loading tasks
+    _subscribeFolders();
     _loadTasks();
+  }
+
+  void _subscribeFolders() {
+    _folderService.getFolders(type: FolderType.task).listen(
+      (folders) {
+        setState(() {
+          _folders = folders;
+          _isLoading = false;
+        });
+      },
+      onError: (error) {
+        print('Error loading folders: $error');
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading folders: $error')),
+        );
+      },
+    );
   }
 
   void _loadTasks() {
@@ -32,6 +57,7 @@ class _TasksPageState extends State<TasksPage> {
           id: '1',
           title: 'Title',
           date: date,
+          folderId: 'home',
           subTasks: [
             SubTask(id: '1-1', title: 'Task Page'),
             SubTask(id: '1-2', title: 'Making the Writing Pages'),
@@ -43,6 +69,8 @@ class _TasksPageState extends State<TasksPage> {
           id: '2',
           title: 'Back End',
           date: date,
+          folderId: 'work',
+          isBookmark: true,
           subTasks: [
             SubTask(id: '2-1', title: 'Database'),
             SubTask(id: '2-2', title: 'Login & Regis'),
@@ -76,6 +104,32 @@ class _TasksPageState extends State<TasksPage> {
     });
   }
 
+  List<Task> get _filteredTasks {
+    if (_selectedFolderId == null) {
+      return _tasks;
+    } else if (_selectedFolderId == 'bookmarks') {
+      return _tasks.where((task) => task.isBookmark).toList();
+    } else {
+      return _tasks.where((task) => task.folderId == _selectedFolderId).toList();
+    }
+  }
+
+  void _selectFolder(String? folderId) {
+    setState(() {
+      _selectedFolderId = folderId;
+    });
+  }
+
+  int _getEntryCount(String? folderId) {
+    if (folderId == null) {
+      return _tasks.length;
+    } else if (folderId == 'bookmarks') {
+      return _tasks.where((task) => task.isBookmark).length;
+    } else {
+      return _tasks.where((task) => task.folderId == folderId).length;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,11 +140,21 @@ class _TasksPageState extends State<TasksPage> {
             // Header
             _buildHeader(),
             
+            // Folder tabs
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildFolderTabs(),
+            ),
+            
+            const SizedBox(height: 16.0),
+            
             // Main content - either empty state or tasks
             Expanded(
-              child: _tasks.isEmpty
-                  ? _buildEmptyState()
-                  : _buildTasksList(),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _tasks.isEmpty
+                      ? _buildEmptyState()
+                      : _buildTasksList(),
             ),
             
             // Search bar
@@ -100,6 +164,188 @@ class _TasksPageState extends State<TasksPage> {
             _buildNavigationBar(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFolderTabs() {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          // All folder tab (always first)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: InkWell(
+              onTap: () => _selectFolder(null),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                decoration: BoxDecoration(
+                  color: _selectedFolderId == null
+                      ? const Color(0xFF9C834F)
+                      : const Color(0xFFF5F5DB),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF9C834F),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'All',
+                      style: TextStyle(
+                        color: _selectedFolderId == null
+                            ? Colors.white
+                            : const Color(0xFF9C834F),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedFolderId == null
+                            ? Colors.white.withOpacity(0.2)
+                            : const Color(0xFF9C834F).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _getEntryCount(null).toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _selectedFolderId == null
+                              ? Colors.white
+                              : const Color(0xFF9C834F),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Bookmarks folder tab (always second)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: InkWell(
+              onTap: () => _selectFolder('bookmarks'),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                decoration: BoxDecoration(
+                  color: _selectedFolderId == 'bookmarks'
+                      ? const Color(0xFF9C834F)
+                      : const Color(0xFFF5F5DB),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF9C834F),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Bookmarks',
+                      style: TextStyle(
+                        color: _selectedFolderId == 'bookmarks'
+                            ? Colors.white
+                            : const Color(0xFF9C834F),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedFolderId == 'bookmarks'
+                            ? Colors.white.withOpacity(0.2)
+                            : const Color(0xFF9C834F).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _getEntryCount('bookmarks').toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _selectedFolderId == 'bookmarks'
+                              ? Colors.white
+                              : const Color(0xFF9C834F),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // User created folders
+          ..._folders.map((folder) {
+            final isSelected = folder.id == _selectedFolderId;
+            final entriesInFolder = _getEntryCount(folder.id);
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: InkWell(
+                onTap: () => _selectFolder(folder.id),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF9C834F)
+                        : const Color(0xFFF5F5DB),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        folder.name,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF9C834F),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.white.withOpacity(0.2)
+                              : const Color(0xFF9C834F).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          entriesInFolder.toString(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF9C834F),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ],
       ),
     );
   }
@@ -118,25 +364,33 @@ class _TasksPageState extends State<TasksPage> {
               height: 52,
               width: 52,
             ),
-            Text(
+            const Text(
               'TASKS',
               style: TextStyle(
-                color: const Color(0xFF9C834F),
+                color: Color(0xFF9C834F),
                 fontSize: 40,
                 fontFamily: 'Inria Sans',
                 fontWeight: FontWeight.w700,
                 letterSpacing: -1.60,
               ),
             ),
-            SizedBox(width: 84),
+            const SizedBox(width: 84),
             IconButton(
-              icon: Icon(
+              icon: const Icon(
                 Icons.folder_outlined,
-                color: const Color(0xFF9C834F),
+                color: Color(0xFF9C834F),
                 size: 32,
               ),
               onPressed: () {
-                Navigator.pushNamed(context, '/folders');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FoldersPage(
+                      folderType: FolderType.task,
+                      title: 'TASK FOLDERS',
+                    ),
+                  ),
+                );
               },
             ),
           ],
@@ -164,20 +418,20 @@ class _TasksPageState extends State<TasksPage> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFF9C834F)),
                 ),
-                child: Center(
+                child: const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.book_outlined,
                         size: 80,
-                        color: const Color(0xFF9C834F),
+                        color: Color(0xFF9C834F),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         "Journal Illustration",
                         style: TextStyle(
-                          color: const Color(0xFF9C834F),
+                          color: Color(0xFF9C834F),
                         ),
                       ),
                     ],
@@ -186,7 +440,7 @@ class _TasksPageState extends State<TasksPage> {
               );
             },
           ),
-          SizedBox(
+          const SizedBox(
             width: 296,
             child: Text.rich(
               TextSpan(
@@ -194,7 +448,7 @@ class _TasksPageState extends State<TasksPage> {
                   TextSpan(
                     text: 'Start your',
                     style: TextStyle(
-                      color: const Color(0xFF333333),
+                      color: Color(0xFF333333),
                       fontSize: 36,
                       fontFamily: 'Inria Sans',
                       fontWeight: FontWeight.w700,
@@ -204,7 +458,7 @@ class _TasksPageState extends State<TasksPage> {
                   TextSpan(
                     text: ' ',
                     style: TextStyle(
-                      color: const Color(0xFF333333),
+                      color: Color(0xFF333333),
                       fontSize: 36,
                       fontFamily: 'Inria Sans',
                       fontWeight: FontWeight.w400,
@@ -214,7 +468,7 @@ class _TasksPageState extends State<TasksPage> {
                   TextSpan(
                     text: 'Journey',
                     style: TextStyle(
-                      color: const Color(0xFF9C834F),
+                      color: Color(0xFF9C834F),
                       fontSize: 36,
                       fontStyle: FontStyle.italic,
                       fontFamily: 'Inria Sans',
@@ -225,7 +479,7 @@ class _TasksPageState extends State<TasksPage> {
                   TextSpan(
                     text: ' ',
                     style: TextStyle(
-                      color: const Color(0xFF333333),
+                      color: Color(0xFF333333),
                       fontSize: 36,
                       fontFamily: 'Inria Sans',
                       fontWeight: FontWeight.w400,
@@ -237,13 +491,13 @@ class _TasksPageState extends State<TasksPage> {
               textAlign: TextAlign.center,
             ),
           ),
-          SizedBox(
+          const SizedBox(
             width: 296,
             child: Text(
-              'Create your personal task.      Tap the plus button to get started.',
+              'Create your personal task.     Tap the plus button to get started.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: const Color(0xFF333333),
+                color: Color(0xFF333333),
                 fontSize: 16,
                 fontFamily: 'Inria Sans',
                 fontWeight: FontWeight.w400,
@@ -260,7 +514,7 @@ class _TasksPageState extends State<TasksPage> {
               backgroundColor: Colors.white,
               foregroundColor: const Color(0xFF9C834F),
             ),
-            child: Text('Toggle Tasks (Demo)'),
+            child: const Text('Toggle Tasks (Demo)'),
           ),
         ],
       ),
@@ -277,14 +531,14 @@ class _TasksPageState extends State<TasksPage> {
         mainAxisSpacing: 16.0,
         childAspectRatio: 1.0,
       ),
-      itemCount: _tasks.length,
+      itemCount: _filteredTasks.length,
       itemBuilder: (context, index) {
-        final task = _tasks[index];
+        final task = _filteredTasks[index];
         return TaskCard(
           task: task,
           onToggleSubTask: _toggleSubTaskCompletion,
           onAddSubTask: () {
-            // Implement add subtask functionality
+            // TODO: Implement add subtask
           },
         );
       },
@@ -301,13 +555,13 @@ class _TasksPageState extends State<TasksPage> {
         decoration: ShapeDecoration(
           color: const Color(0xFFF5F5DB),
           shape: RoundedRectangleBorder(
-            side: BorderSide(
+            side: const BorderSide(
               width: 1.5,
               color: Color(0xFF9C834F),
             ),
             borderRadius: BorderRadius.circular(18),
           ),
-          shadows: [
+          shadows: const [
             BoxShadow(
               color: Color(0x3F000000),
               blurRadius: 4,
@@ -316,7 +570,7 @@ class _TasksPageState extends State<TasksPage> {
             ),
           ],
         ),
-        child: Row(
+        child: const Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
@@ -358,7 +612,7 @@ class _TasksPageState extends State<TasksPage> {
 
   //NAVIGATION BAR
   Widget _buildNavigationBar() {
-    return Container(
+    return SizedBox(
       width: 320,
       height: 65,
       child: Stack(
@@ -377,7 +631,7 @@ class _TasksPageState extends State<TasksPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(40),
                 ),
-                shadows: [
+                shadows: const [
                   BoxShadow(
                     color: Color(0x3F000000),
                     blurRadius: 4,
@@ -390,26 +644,26 @@ class _TasksPageState extends State<TasksPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/journal');
                     },
                   ),
                   IconButton(
-                    icon: Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/notes');
                     },
                   ),
-                  SizedBox(width: 48), // space for center button
+                  const SizedBox(width: 48), // space for center button
                   IconButton(
-                    icon: Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/tasks');
                     },
                   ),
                   IconButton(
-                    icon: Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {},
                   ),
                 ],
@@ -423,18 +677,18 @@ class _TasksPageState extends State<TasksPage> {
             child: Container(
               width: 48,
               height: 48,
-              decoration: ShapeDecoration(
-                color: const Color(0xFFF5F5DB),
+              decoration: const ShapeDecoration(
+                color: Color(0xFFF5F5DB),
                 shape: OvalBorder(
                   side: BorderSide(
                     width: 1.5,
-                    color: const Color(0xFF9C834F),
+                    color: Color(0xFF9C834F),
                   ),
                 ),
               ),
               child: Center(
                 child: IconButton(
-                  icon: Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
+                  icon: const Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
                   onPressed: () {
                     // Navigate to task entry page
                     Navigator.push(
@@ -449,7 +703,7 @@ class _TasksPageState extends State<TasksPage> {
               ),
             ),
           ),
-          SizedBox(
+          const SizedBox(
             height: 10,
           )
         ],

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import '../models/folder.dart';
 import '../models/journal_entry.dart';
-import '../widgets/leaf_logo.dart';
 import '../widgets/journal_entry_card.dart';
+import '../services/journal_service.dart';
+import '../services/folder_service.dart';
+import '../widgets/move_entry_dialog.dart';
 import 'journal_entry_page.dart';
+import 'folders_page.dart';
 
 class JournalPage extends StatefulWidget {
   const JournalPage({super.key});
@@ -12,62 +16,215 @@ class JournalPage extends StatefulWidget {
 }
 
 class _JournalPageState extends State<JournalPage> {
-  // This would typically come from a database or state management solution
-  // For now, we'll use a simple list that can be toggled for demonstration
-  List<JournalEntry> _journalEntries = [];
-  bool _showEntries = false; // Toggle this for demo purposes
+  final JournalService _journalService = JournalService();
+  final FolderService _folderService = FolderService();
+  List<JournalEntry> _allEntries = []; // All entries for counting
+  List<JournalEntry> _journalEntries = []; // Current folder entries
+  List<JournalEntry> _filteredEntries = []; // Search filtered entries
+  List<Folder> _folders = [];
+  String? _selectedFolderId;
+  bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Simulate loading entries
-    _loadJournalEntries();
+    _subscribeFolders();
+    _subscribeToAllEntries();
+    _subscribeToJournalEntries();
   }
 
-  void _loadJournalEntries() {
-    // This would typically fetch from a database
-    if (_showEntries) {
-      _journalEntries = [
-        JournalEntry(
-          id: '1',
-          title: 'Log Title #1',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _subscribeFolders() {
+    _folderService.getFolders(type: FolderType.journal).listen(
+      (folders) {
+        setState(() {
+          _folders = folders;
+        });
+      },
+      onError: (error) {
+        print('Error loading folders: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading folders: $error')),
+        );
+      },
+    );
+  }
+
+  void _subscribeToAllEntries() {
+    _journalService.getJournalEntries().listen(
+      (entries) {
+        setState(() {
+          _allEntries = entries;
+        });
+      },
+      onError: (error) {
+        print('Error loading all entries: $error');
+      },
+    );
+  }
+
+  void _subscribeToJournalEntries() {
+    _journalService.getJournalEntries(folderId: _selectedFolderId).listen(
+      (entries) {
+        setState(() {
+          _journalEntries = entries;
+          _filteredEntries = entries;
+          _isLoading = false;
+        });
+      },
+      onError: (error) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading journal entries: $error')),
+        );
+      },
+    );
+  }
+
+  void _filterEntries(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredEntries = _journalEntries;
+      } else {
+        _filteredEntries = _journalEntries.where((entry) {
+          final titleMatch = entry.title.toLowerCase().contains(query.toLowerCase());
+          final contentMatch = entry.content.toLowerCase().contains(query.toLowerCase());
+          return titleMatch || contentMatch;
+        }).toList();
+      }
+    });
+  }
+
+  void _selectFolder(String? folderId) {
+    setState(() {
+      _selectedFolderId = folderId;
+      _searchController.clear();
+    });
+    _subscribeToJournalEntries();
+  }
+
+  void _navigateToEntry(JournalEntry? entry) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => JournalEntryPage(
+          entryId: entry?.id,
+          initialTitle: entry?.title,
+          initialContent: entry?.content,
+          initialMood: entry?.mood,
+          initialFolderId: entry?.folderId ?? _selectedFolderId,
+          currentFolderId: _selectedFolderId,
         ),
-        JournalEntry(
-          id: '2',
-          title: 'Log Title #2',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+    );
+  }
+
+  void _navigateToFolders() async {
+    final selectedFolderId = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FoldersPage(
+          folderType: FolderType.journal,
+          title: 'JOURNAL FOLDERS',
         ),
-        JournalEntry(
-          id: '3',
-          title: 'Log Title #3',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        ),
-        JournalEntry(
-          id: '4',
-          title: 'Log Title #4',
-          content: "On Today's thoughts, I had a sandwich today, not only that, I also had some cookies and...",
-          mood: 'Neutral',
-          createdAt: DateTime.now().subtract(const Duration(days: 4)),
-        ),
-      ];
-    } else {
-      _journalEntries = [];
+      ),
+    );
+    
+    if (selectedFolderId != null) {
+      _selectFolder(selectedFolderId);
     }
   }
 
-  // For demo purposes - toggle between empty and filled states
-  void _toggleEntries() {
-    setState(() {
-      _showEntries = !_showEntries;
-      _loadJournalEntries();
-    });
+  void _handleBookmarkToggle(String entryId, bool newValue) async {
+    try {
+      await _journalService.toggleBookmark(entryId, newValue);
+      // No need to manually update state as the stream will handle it
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating bookmark status: $e')),
+        );
+      }
+    }
+  }
+
+  void _handleMoveEntry(String entryId, String? currentFolderId) async {
+    final newFolderId = await showDialog<String>(
+      context: context,
+      builder: (context) => MoveEntryDialog(
+        currentFolderId: currentFolderId ?? '',
+        folderType: FolderType.journal,
+      ),
+    );
+
+    if (newFolderId != null && newFolderId != currentFolderId) {
+      try {
+        await _journalService.moveEntry(entryId, newFolderId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Entry moved successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error moving entry: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _handleArchiveEntry(String entryId, String title) async {
+    try {
+      await _journalService.archiveEntry(entryId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Entry moved to Recently Deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error moving entry to Recently Deleted: $e')),
+        );
+      }
+    }
+  }
+
+  void _handleDeleteEntry(String entryId, String title) async {
+    try {
+      await _journalService.permanentlyDeleteEntry(entryId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Entry permanently deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting entry: $e')),
+        );
+      }
+    }
+  }
+
+  int _getEntryCount(String? folderId) {
+    if (folderId == null) {
+      return _allEntries.length;
+    } else if (folderId == 'bookmarks') {
+      return _allEntries.where((entry) => entry.isBookmark).length;
+    } else {
+      return _allEntries.where((entry) => entry.folderId == folderId).length;
+    }
   }
 
   @override
@@ -77,14 +234,57 @@ class _JournalPageState extends State<JournalPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            _buildHeader(),
+            // Header with folder button
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image.asset(
+                    'assets/logo/LoginLogo.png',
+                    height: 52,
+                    width: 52,
+                  ),
+                  const Text(
+                    'JOURNALS',
+                    style: TextStyle(
+                      color: Color(0xFF9C834F),
+                      fontSize: 40,
+                      fontFamily: 'Inria Sans',
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1.60,
+                    ),
+                  ),
+                  const SizedBox(width: 84),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.folder_outlined,
+                      color: Color(0xFF9C834F),
+                      size: 32,
+                    ),
+                    onPressed: _navigateToFolders,
+                  ),
+                ],
+              ),
+            ),
             
-            // Main content - either empty state or journal entries
+            // Folder tabs
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildFolderTabs(),
+            ),
+            
+            const SizedBox(height: 16.0), // Add consistent spacing
+            
+            // Main content - either empty state, loading state, or journal entries
             Expanded(
-              child: _journalEntries.isEmpty
-                  ? _buildEmptyState()
-                  : _buildJournalEntries(),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredEntries.isEmpty
+                      ? _buildEmptyState()
+                      : _buildJournalEntries(),
             ),
             
             // Search bar
@@ -113,21 +313,21 @@ class _JournalPageState extends State<JournalPage> {
             height: 52,
             width: 52,
           ),
-          Text(
+          const Text(
             'JOURNALS',
             style: TextStyle(
-              color: const Color(0xFF9C834F),
+              color: Color(0xFF9C834F),
               fontSize: 40,
               fontFamily: 'Inria Sans',
               fontWeight: FontWeight.w700,
               letterSpacing: -1.60,
             ),
           ),
-          SizedBox(width: 84),
+          const SizedBox(width: 84),
           IconButton(
-            icon: Icon(
+            icon: const Icon(
               Icons.folder_outlined,
-              color: const Color(0xFF9C834F),
+              color: Color(0xFF9C834F),
               size: 32,
             ),
             onPressed: () {
@@ -161,20 +361,20 @@ class _JournalPageState extends State<JournalPage> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFF9C834F)),
                 ),
-                child: Center(
+                child: const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.book_outlined,
                         size: 80,
-                        color: const Color(0xFF9C834F),
+                        color: Color(0xFF9C834F),
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Text(
                         "Journal Illustration",
                         style: TextStyle(
-                          color: const Color(0xFF9C834F),
+                          color: Color(0xFF9C834F),
                         ),
                       ),
                     ],
@@ -183,7 +383,7 @@ class _JournalPageState extends State<JournalPage> {
               );
             },
           ),
-          SizedBox(
+          const SizedBox(
             width: 296,
             child: Text.rich(
               TextSpan(
@@ -191,7 +391,7 @@ class _JournalPageState extends State<JournalPage> {
                   TextSpan(
                     text: 'Start your',
                     style: TextStyle(
-                      color: const Color(0xFF333333),
+                      color: Color(0xFF333333),
                       fontSize: 36,
                       fontFamily: 'Inria Sans',
                       fontWeight: FontWeight.w700,
@@ -201,7 +401,7 @@ class _JournalPageState extends State<JournalPage> {
                   TextSpan(
                     text: ' ',
                     style: TextStyle(
-                      color: const Color(0xFF333333),
+                      color: Color(0xFF333333),
                       fontSize: 36,
                       fontFamily: 'Inria Sans',
                       fontWeight: FontWeight.w400,
@@ -211,7 +411,7 @@ class _JournalPageState extends State<JournalPage> {
                   TextSpan(
                     text: 'Journey',
                     style: TextStyle(
-                      color: const Color(0xFF9C834F),
+                      color: Color(0xFF9C834F),
                       fontSize: 36,
                       fontStyle: FontStyle.italic,
                       fontFamily: 'Inria Sans',
@@ -222,7 +422,7 @@ class _JournalPageState extends State<JournalPage> {
                   TextSpan(
                     text: ' ',
                     style: TextStyle(
-                      color: const Color(0xFF333333),
+                      color: Color(0xFF333333),
                       fontSize: 36,
                       fontFamily: 'Inria Sans',
                       fontWeight: FontWeight.w400,
@@ -234,31 +434,19 @@ class _JournalPageState extends State<JournalPage> {
               textAlign: TextAlign.center,
             ),
           ),
-          SizedBox(
+          const SizedBox(
             width: 296,
             child: Text(
-              'Create your personal journal.      Tap the plus button to get started.',
+              'Create your personal journal.     Tap the plus button to get started.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: const Color(0xFF333333),
+                color: Color(0xFF333333),
                 fontSize: 16,
                 fontFamily: 'Inria Sans',
                 fontWeight: FontWeight.w400,
                 letterSpacing: -0.64,
               ),
             ),
-          ),
-
-
-          // For demo purposes - button to toggle between states
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _toggleEntries,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF9C834F),
-            ),
-            child: Text('Toggle Entries (Demo)'),
           ),
         ],
       ),
@@ -268,15 +456,28 @@ class _JournalPageState extends State<JournalPage> {
 
 //SEARCH BAR
   Widget _buildJournalEntries() {
+    // Filter entries for bookmarks folder
+    final displayedEntries = _selectedFolderId == 'bookmarks'
+        ? _filteredEntries.where((entry) => entry.isBookmark).toList()
+        : _filteredEntries;
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      itemCount: _journalEntries.length,
       itemBuilder: (context, index) {
-        final entry = _journalEntries[index];
-        return JournalEntryCard(entry: entry);
+        final entry = displayedEntries[index];
+        return JournalEntryCard(
+          entry: entry,
+          onTap: () => _navigateToEntry(entry),
+          onBookmarkToggle: (newValue) => _handleBookmarkToggle(entry.id, newValue),
+          onMove: (_) => _handleMoveEntry(entry.id, entry.folderId),
+          onArchive: _handleArchiveEntry,
+          onDelete: () => _handleDeleteEntry(entry.id, entry.title),
+        );
       },
+      itemCount: displayedEntries.length,
     );
   }
+
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -287,13 +488,13 @@ class _JournalPageState extends State<JournalPage> {
         decoration: ShapeDecoration(
           color: const Color(0xFFF5F5DB),
           shape: RoundedRectangleBorder(
-            side: BorderSide(
+            side: const BorderSide(
               width: 1.5,
               color: Color(0xFF9C834F),
             ),
             borderRadius: BorderRadius.circular(18),
           ),
-          shadows: [
+          shadows: const [
             BoxShadow(
               color: Color(0x3F000000),
               blurRadius: 4,
@@ -305,15 +506,17 @@ class _JournalPageState extends State<JournalPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.search,
               color: Color(0x7F9C834F),
               size: 20,
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Expanded(
               child: TextField(
-                style: TextStyle(
+                controller: _searchController,
+                onChanged: _filterEntries,
+                style: const TextStyle(
                   fontFamily: 'Inria Sans',
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
@@ -321,7 +524,7 @@ class _JournalPageState extends State<JournalPage> {
                   letterSpacing: -0.24,
                   color: Colors.black,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
                   hintText: 'Search for Leaves',
@@ -342,17 +545,198 @@ class _JournalPageState extends State<JournalPage> {
     );
   }
 
+  Widget _buildFolderTabs() {
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          // All folder tab (always first)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: InkWell(
+              onTap: () => _selectFolder(null),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                decoration: BoxDecoration(
+                  color: _selectedFolderId == null
+                      ? const Color(0xFF9C834F)
+                      : const Color(0xFFF5F5DB),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF9C834F),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'All',
+                      style: TextStyle(
+                        color: _selectedFolderId == null
+                            ? Colors.white
+                            : const Color(0xFF9C834F),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedFolderId == null
+                            ? Colors.white.withOpacity(0.2)
+                            : const Color(0xFF9C834F).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _getEntryCount(null).toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _selectedFolderId == null
+                              ? Colors.white
+                              : const Color(0xFF9C834F),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Bookmarks folder tab (always second)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: InkWell(
+              onTap: () => _selectFolder('bookmarks'),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                decoration: BoxDecoration(
+                  color: _selectedFolderId == 'bookmarks'
+                      ? const Color(0xFF9C834F)
+                      : const Color(0xFFF5F5DB),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF9C834F),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Bookmarks',
+                      style: TextStyle(
+                        color: _selectedFolderId == 'bookmarks'
+                            ? Colors.white
+                            : const Color(0xFF9C834F),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedFolderId == 'bookmarks'
+                            ? Colors.white.withOpacity(0.2)
+                            : const Color(0xFF9C834F).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        _getEntryCount('bookmarks').toString(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _selectedFolderId == 'bookmarks'
+                              ? Colors.white
+                              : const Color(0xFF9C834F),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // User created folders
+          ..._folders.map((folder) {
+            final isSelected = folder.id == _selectedFolderId;
+            final entriesInFolder = _getEntryCount(folder.id);
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: InkWell(
+                onTap: () => _selectFolder(folder.id),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF9C834F)
+                        : const Color(0xFFF5F5DB),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        folder.name,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF9C834F),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.white.withOpacity(0.2)
+                              : const Color(0xFF9C834F).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          entriesInFolder.toString(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF9C834F),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
 
 //NAVIGATION BAR
   Widget _buildNavigationBar() {
-    return Container(
+    return SizedBox(
       width: 320,
       height: 65,
       child: Stack(
         children: [
-          // Background bar with 4 icons
           Positioned(
-            bottom:12.0, // move it up from the screen edge
+            bottom: 12.0,
             left: 0,
             top: 11,
             child: Container(
@@ -364,7 +748,7 @@ class _JournalPageState extends State<JournalPage> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(40),
                 ),
-                shadows: [
+                shadows: const [
                   BoxShadow(
                     color: Color(0x3F000000),
                     blurRadius: 4,
@@ -377,26 +761,26 @@ class _JournalPageState extends State<JournalPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/journal');
                     },
                   ),
                   IconButton(
-                    icon: Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/notes');
                     },
                   ),
-                  SizedBox(width: 48), // space for center button
+                  const SizedBox(width: 48),
                   IconButton(
-                    icon: Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/tasks');
                     },
                   ),
                   IconButton(
-                    icon: Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
+                    icon: const Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
                     onPressed: () {},
                   ),
                 ],
@@ -410,36 +794,25 @@ class _JournalPageState extends State<JournalPage> {
             child: Container(
               width: 48,
               height: 48,
-              decoration: ShapeDecoration(
-                color: const Color(0xFFF5F5DB),
+              decoration: const ShapeDecoration(
+                color: Color(0xFFF5F5DB),
                 shape: OvalBorder(
                   side: BorderSide(
                     width: 1.5,
-                    color: const Color(0xFF9C834F),
+                    color: Color(0xFF9C834F),
                   ),
                 ),
               ),
               child: Center(
                 child: IconButton(
-                  icon: Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
-                  onPressed: () {
-                    // Navigate to journal entry page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const JournalEntryPage()),
-                    );
-                  },
+                  icon: const Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
+                  onPressed: () => _navigateToEntry(null),
                 ),
               ),
             ),
           ),
-          SizedBox(
-            height: 10,
-          )
         ],
       ),
     );
   }
-
-
 }

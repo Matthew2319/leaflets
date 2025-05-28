@@ -1,9 +1,26 @@
 import 'package:flutter/material.dart';
-import '../models/mood.dart';
+import '../models/folder.dart';
+import '../services/journal_service.dart';
+import '../services/folder_service.dart';
 import '../widgets/mood_selection_dialog.dart';
 
 class JournalEntryPage extends StatefulWidget {
-  const JournalEntryPage({super.key});
+  final String? entryId;
+  final String? initialTitle;
+  final String? initialContent;
+  final String? initialMood;
+  final String? initialFolderId;
+  final String? currentFolderId;
+
+  const JournalEntryPage({
+    super.key,
+    this.entryId,
+    this.initialTitle,
+    this.initialContent,
+    this.initialMood,
+    this.initialFolderId,
+    this.currentFolderId,
+  });
 
   @override
   State<JournalEntryPage> createState() => _JournalEntryPageState();
@@ -12,18 +29,54 @@ class JournalEntryPage extends StatefulWidget {
 class _JournalEntryPageState extends State<JournalEntryPage> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _journalService = JournalService();
+  final _folderService = FolderService();
   String _selectedMood = 'Neutral';
+  String? _selectedFolderId;
+  List<Folder> _folders = [];
   bool _showMoodDialog = true;
+  bool _isSaving = false;
+  bool _isEditing = false;
+  bool _isLoadingFolders = true;
 
   @override
   void initState() {
     super.initState();
-    // Show mood dialog when the page is first loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_showMoodDialog) {
-        _showMoodSelectionDialog();
-      }
-    });
+    _selectedFolderId = widget.initialFolderId ?? widget.currentFolderId;
+    _loadFolders();
+    
+    // Initialize controllers with existing data if editing
+    if (widget.entryId != null) {
+      _isEditing = true;
+      _titleController.text = widget.initialTitle ?? '';
+      _contentController.text = widget.initialContent ?? '';
+      _selectedMood = widget.initialMood ?? 'Neutral';
+      _showMoodDialog = false;
+    } else {
+      // Show mood dialog when creating new entry
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_showMoodDialog) {
+          _showMoodSelectionDialog();
+        }
+      });
+    }
+  }
+
+  void _loadFolders() {
+    _folderService.getFolders().listen(
+      (folders) {
+        setState(() {
+          _folders = folders;
+          _isLoadingFolders = false;
+        });
+      },
+      onError: (error) {
+        print('Error loading folders: $error');
+        setState(() {
+          _isLoadingFolders = false;
+        });
+      },
+    );
   }
 
   @override
@@ -54,6 +107,53 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
     );
   }
 
+  Future<void> _saveEntry() async {
+    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in both title and content')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      if (_isEditing && widget.entryId != null) {
+        await _journalService.updateJournalEntry(
+          widget.entryId!,
+          _titleController.text,
+          _contentController.text,
+          _selectedMood,
+          folderId: _selectedFolderId,
+        );
+      } else {
+        await _journalService.createJournalEntry(
+          _titleController.text,
+          _contentController.text,
+          _selectedMood,
+          folderId: _selectedFolderId,
+        );
+      }
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving journal entry: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
   String _getCurrentDate() {
     final now = DateTime.now();
     final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -79,15 +179,15 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
                     // Title field
                     TextField(
                       controller: _titleController,
-                      style: TextStyle(
-                        color: const Color(0xFF9C834F),
+                      style: const TextStyle(
+                        color: Color(0xFF9C834F),
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         hintText: 'TITLE',
                         hintStyle: TextStyle(
-                          color: const Color(0xFF9C834F),
+                          color: Color(0xFF9C834F),
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -105,11 +205,11 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
                     Expanded(
                       child: TextField(
                         controller: _contentController,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.black87,
                           fontSize: 16,
                         ),
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: 'Start Writing...',
                           hintStyle: TextStyle(
                             color: Colors.black54,
@@ -146,29 +246,49 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
                 children: [
                   // Back button
                   IconButton(
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.arrow_back,
-                      color: const Color(0xFF9C834F),
+                      color: Color(0xFF9C834F),
                     ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: _isSaving ? null : () => Navigator.pop(context),
                   ),
                   
                   // Date and mood
                   Column(
                     children: [
-                      Text(
-                        'Mood: $_selectedMood',
-                        style: TextStyle(
-                          color: const Color(0xFF9C834F),
-                          fontSize: 12,
+                      // Clickable mood section
+                      GestureDetector(
+                        onTap: _showMoodSelectionDialog,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF9C834F).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Mood: $_selectedMood',
+                                style: const TextStyle(
+                                  color: Color(0xFF9C834F),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.edit,
+                                size: 12,
+                                color: Color(0xFF9C834F),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       Text(
                         _getCurrentDate(),
-                        style: TextStyle(
-                          color: const Color(0xFF9C834F),
+                        style: const TextStyle(
+                          color: Color(0xFF9C834F),
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -178,18 +298,26 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
                   
                   // Done button
                   TextButton(
-                    onPressed: () {
-                      // Save journal entry and go back
-                      Navigator.pop(context);
-                    },
+                    onPressed: _isSaving ? null : _saveEntry,
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF9C834F),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline),
+                        _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF9C834F),
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.check_circle_outline),
                         const SizedBox(width: 4),
-                        Text('Done'),
+                        Text(_isSaving ? 'Saving...' : 'Done'),
                       ],
                     ),
                   ),
