@@ -188,13 +188,13 @@ class _JournalPageState extends State<JournalPage> {
       await _journalService.archiveEntry(entryId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Entry moved to Recently Deleted')),
+          const SnackBar(content: Text('Item deleted and moved to Recently Deleted')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error moving entry to Recently Deleted: $e')),
+          SnackBar(content: Text('Error deleting item: $e')),
         );
       }
     }
@@ -289,9 +289,6 @@ class _JournalPageState extends State<JournalPage> {
             
             // Search bar
             _buildSearchBar(),
-            
-            // Navigation bar
-            _buildNavigationBar(),
           ],
         ),
       ),
@@ -722,95 +719,6 @@ class _JournalPageState extends State<JournalPage> {
               ),
             );
           }).toList(),
-        ],
-      ),
-    );
-  }
-
-
-//NAVIGATION BAR
-  Widget _buildNavigationBar() {
-    return SizedBox(
-      width: 320,
-      height: 65,
-      child: Stack(
-        children: [
-          Positioned(
-            bottom: 12.0,
-            left: 0,
-            top: 11,
-            child: Container(
-              height: 54,
-              width: 320,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              decoration: ShapeDecoration(
-                color: const Color(0xFF9C834F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(40),
-                ),
-                shadows: const [
-                  BoxShadow(
-                    color: Color(0x3F000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 4),
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/journal');
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/notes');
-                    },
-                  ),
-                  const SizedBox(width: 48),
-                  IconButton(
-                    icon: const Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/tasks');
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Center floating action button
-          Positioned(
-            left: 136,
-            top: 0,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: const ShapeDecoration(
-                color: Color(0xFFF5F5DB),
-                shape: OvalBorder(
-                  side: BorderSide(
-                    width: 1.5,
-                    color: Color(0xFF9C834F),
-                  ),
-                ),
-              ),
-              child: Center(
-                child: IconButton(
-                  icon: const Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
-                  onPressed: () => _navigateToEntry(null),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

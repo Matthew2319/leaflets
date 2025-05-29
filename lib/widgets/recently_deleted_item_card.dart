@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import '../models/journal_entry.dart'; // To identify journal entries
 import '../models/note.dart'; // To identify notes
+import '../models/task.dart'; // Added for Task type
 
 class RecentlyDeletedItemCard extends StatelessWidget {
-  final dynamic item; // Can be JournalEntry or Note
+  final dynamic item; // Can be JournalEntry or Note or Task
   final VoidCallback onRestore;
   final VoidCallback onPermanentlyDelete;
 
@@ -33,6 +34,10 @@ class RecentlyDeletedItemCard extends StatelessWidget {
       title = (item as Note).title;
       createdAt = (item as Note).createdAt;
       iconData = Icons.note_outlined;
+    } else if (item is Task) {
+      title = (item as Task).title;
+      createdAt = (item as Task).createdAt;
+      iconData = Icons.check_circle_outline;
     } else {
       // Fallback for unknown item types, though this shouldn't happen
       title = 'Unknown Item';

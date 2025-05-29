@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../models/folder.dart';
-import '../widgets/task_card.dart';
+import '../services/task_service.dart';
 import '../services/folder_service.dart';
+import '../widgets/task_card.dart';
+import '../widgets/move_entry_dialog.dart'; // Re-use for moving tasks
 import 'task_entry_page.dart';
-import 'folders_page.dart';
+import 'folders_page.dart'; // For managing task folders
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -14,120 +16,190 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
+  final TaskService _taskService = TaskService();
   final FolderService _folderService = FolderService();
-  List<Task> _tasks = [];
+  List<Task> _allTasks = []; // All tasks for counting and filtering
+  List<Task> _currentFolderTasks = []; // Tasks in the selected folder
+  List<Task> _filteredTasks = []; // Search filtered tasks
   List<Folder> _folders = [];
-  String? _selectedFolderId;
+  String? _selectedFolderId; // null for 'All' tasks
   bool _isLoading = true;
-  bool _showTasks = false; // Toggle this for demo purposes
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _subscribeFolders();
-    _loadTasks();
+    _subscribeToFolders();
+    _subscribeToAllTasks(); // For counts
+    _subscribeToCurrentFolderTasks(); // For display
   }
 
-  void _subscribeFolders() {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _subscribeToFolders() {
     _folderService.getFolders(type: FolderType.task).listen(
       (folders) {
-        setState(() {
-          _folders = folders;
-          _isLoading = false;
-        });
+        if (mounted) setState(() => _folders = folders);
       },
       onError: (error) {
-        print('Error loading folders: $error');
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading folders: $error')),
-        );
+        print('Error loading task folders: $error');
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading task folders: $error')));
       },
     );
   }
 
-  void _loadTasks() {
-    if (_showTasks) {
-      final date = DateTime(2023, 11, 14); // November 14, 2023 (Wednesday)
-      
-      _tasks = [
-        Task(
-          id: '1',
-          title: 'Title',
-          date: date,
-          folderId: 'home',
-          subTasks: [
-            SubTask(id: '1-1', title: 'Task Page'),
-            SubTask(id: '1-2', title: 'Making the Writing Pages'),
-            SubTask(id: '1-3', title: '"How do you feel prompt"'),
-            SubTask(id: '1-4', title: 'THE BACKEND'),
-          ],
-        ),
-        Task(
-          id: '2',
-          title: 'Back End',
-          date: date,
-          folderId: 'work',
-          isBookmark: true,
-          subTasks: [
-            SubTask(id: '2-1', title: 'Database'),
-            SubTask(id: '2-2', title: 'Login & Regis'),
-            SubTask(id: '2-3', title: 'Notes Pages'),
-          ],
-        ),
-      ];
-    } else {
-      _tasks = [];
-    }
+  void _subscribeToAllTasks() {
+    _taskService.getTasks().listen( // Gets all non-archived tasks for the user
+      (tasks) {
+        if (mounted) setState(() => _allTasks = tasks);
+      },
+      onError: (error) => print('Error loading all tasks for counts: $error'),
+    );
   }
 
-  // For demo purposes - toggle between empty and filled states
-  void _toggleTasks() {
-    setState(() {
-      _showTasks = !_showTasks;
-      _loadTasks();
-    });
-  }
-
-  void _toggleSubTaskCompletion(String taskId, String subTaskId) {
-    setState(() {
-      final taskIndex = _tasks.indexWhere((task) => task.id == taskId);
-      if (taskIndex != -1) {
-        final subTaskIndex = _tasks[taskIndex].subTasks.indexWhere((subTask) => subTask.id == subTaskId);
-        if (subTaskIndex != -1) {
-          _tasks[taskIndex].subTasks[subTaskIndex].isCompleted = 
-            !_tasks[taskIndex].subTasks[subTaskIndex].isCompleted;
+  void _subscribeToCurrentFolderTasks() {
+    setState(() => _isLoading = true);
+    _taskService.getTasks(folderId: _selectedFolderId).listen(
+      (tasks) {
+        if (mounted) {
+          setState(() {
+            _currentFolderTasks = tasks;
+            _filterTasks(_searchController.text); // Apply current search filter
+            _isLoading = false;
+          });
         }
+      },
+      onError: (error) {
+        print('Error loading tasks for folder $_selectedFolderId: $error');
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading tasks: $error')));
+        }
+      },
+    );
+  }
+
+  void _filterTasks(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredTasks = _currentFolderTasks;
+      } else {
+        _filteredTasks = _currentFolderTasks.where((task) {
+          final titleMatch = task.title.toLowerCase().contains(query.toLowerCase());
+          final descriptionMatch = task.description?.toLowerCase().contains(query.toLowerCase()) ?? false;
+          return titleMatch || descriptionMatch;
+        }).toList();
       }
     });
-  }
-
-  List<Task> get _filteredTasks {
-    if (_selectedFolderId == null) {
-      return _tasks;
-    } else if (_selectedFolderId == 'bookmarks') {
-      return _tasks.where((task) => task.isBookmark).toList();
-    } else {
-      return _tasks.where((task) => task.folderId == _selectedFolderId).toList();
-    }
   }
 
   void _selectFolder(String? folderId) {
     setState(() {
       _selectedFolderId = folderId;
+      _searchController.clear(); // Clear search on folder change
     });
+    _subscribeToCurrentFolderTasks();
   }
 
-  int _getEntryCount(String? folderId) {
-    if (folderId == null) {
-      return _tasks.length;
-    } else if (folderId == 'bookmarks') {
-      return _tasks.where((task) => task.isBookmark).length;
-    } else {
-      return _tasks.where((task) => task.folderId == folderId).length;
+  void _navigateToTaskEntry(Task? task) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TaskEntryPage(
+          task: task, // Pass task if editing, null if new
+          currentFolderId: _selectedFolderId, // Pass current folder for new tasks
+        ),
+      ),
+    );
+  }
+
+  void _navigateToFoldersPage() async {
+    final newSelectedFolderId = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FoldersPage(
+          folderType: FolderType.task,
+          title: 'TASK FOLDERS',
+        ),
+      ),
+    );
+    if (newSelectedFolderId != null) {
+      _selectFolder(newSelectedFolderId);
     }
+  }
+
+  void _handleToggleCompletion(String taskId, bool isCompleted) async {
+    try {
+      await _taskService.toggleTaskCompletion(taskId, isCompleted);
+      // Stream will update the UI
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating task: $e')));
+    }
+  }
+
+  void _handleMoveTask(String taskId, String? currentTaskFolderId) async {
+    final newFolderId = await showDialog<String>(
+      context: context,
+      builder: (context) => MoveEntryDialog(
+        currentFolderId: currentTaskFolderId ?? '', // Pass task's current folder
+        folderType: FolderType.task, // Specify task type for dialog
+      ),
+    );
+
+    if (newFolderId != null && newFolderId != currentTaskFolderId) {
+      try {
+        await _taskService.moveTask(taskId, newFolderId == '' ? null : newFolderId ); // '' from dialog means no folder
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Task moved successfully')));
+        // Stream will update UI
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error moving task: $e')));
+      }
+    }
+  }
+
+  void _handleArchiveTask(String taskId, String title) async {
+    // Optimistically remove from local lists for immediate UI feedback
+    final originalFilteredTasks = List<Task>.from(_filteredTasks);
+    final originalCurrentFolderTasks = List<Task>.from(_currentFolderTasks);
+    final originalAllTasks = List<Task>.from(_allTasks);
+
+    setState(() {
+      _filteredTasks.removeWhere((task) => task.id == taskId);
+      _currentFolderTasks.removeWhere((task) => task.id == taskId);
+      _allTasks.removeWhere((task) => task.id == taskId);
+    });
+
+    try {
+      await _taskService.archiveTask(taskId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item deleted and moved to Recently Deleted')),
+        );
+      }
+      // Stream will eventually update and confirm the state from Firestore
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting item: $e')),
+        );
+        // Revert optimistic update if error occurs
+        setState(() {
+          _filteredTasks = originalFilteredTasks;
+          _currentFolderTasks = originalCurrentFolderTasks;
+          _allTasks = originalAllTasks;
+        });
+      }
+    }
+  }
+
+  int _getTaskCount(String? folderId) {
+    if (folderId == null) return _allTasks.length; // _allTasks is already filtered for non-archived
+    // Add other specific counts like 'completed' or 'overdue' if needed later
+    return _allTasks.where((task) => task.folderId == folderId).length; // Count from _allTasks for a specific folder
   }
 
   @override
@@ -139,31 +211,51 @@ class _TasksPageState extends State<TasksPage> {
           children: [
             // Header
             _buildHeader(),
-            
-            // Folder tabs
+            // Folder Tabs
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: _buildFolderTabs(),
             ),
-            
             const SizedBox(height: 16.0),
-            
-            // Main content - either empty state or tasks
+            // Task List or Empty State
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _tasks.isEmpty
+                  ? const Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9C834F))))
+                  : _filteredTasks.isEmpty
                       ? _buildEmptyState()
-                      : _buildTasksList(),
+                      : _buildTaskList(),
             ),
-            
-            // Search bar
+            // Search Bar
             _buildSearchBar(),
-            
-            // Navigation bar
-            _buildNavigationBar(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Image.asset('assets/logo/LoginLogo.png', height: 52, width: 52),
+          const SizedBox(width: 12),
+          const Text(
+            'TASKS',
+            style: TextStyle(
+              color: Color(0xFF9C834F),
+              fontSize: 40,
+              fontFamily: 'Inria Sans',
+              fontWeight: FontWeight.w700,
+              letterSpacing: -1.60,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.folder_outlined, color: Color(0xFF9C834F), size: 32),
+            onPressed: _navigateToFoldersPage,
+          ),
+        ],
       ),
     );
   }
@@ -174,227 +266,53 @@ class _TasksPageState extends State<TasksPage> {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          // All folder tab (always first)
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
-              onTap: () => _selectFolder(null),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: _selectedFolderId == null
-                      ? const Color(0xFF9C834F)
-                      : const Color(0xFFF5F5DB),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF9C834F),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'All',
-                      style: TextStyle(
-                        color: _selectedFolderId == null
-                            ? Colors.white
-                            : const Color(0xFF9C834F),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _selectedFolderId == null
-                            ? Colors.white.withOpacity(0.2)
-                            : const Color(0xFF9C834F).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _getEntryCount(null).toString(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _selectedFolderId == null
-                              ? Colors.white
-                              : const Color(0xFF9C834F),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Bookmarks folder tab (always second)
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
-              onTap: () => _selectFolder('bookmarks'),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: _selectedFolderId == 'bookmarks'
-                      ? const Color(0xFF9C834F)
-                      : const Color(0xFFF5F5DB),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF9C834F),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Bookmarks',
-                      style: TextStyle(
-                        color: _selectedFolderId == 'bookmarks'
-                            ? Colors.white
-                            : const Color(0xFF9C834F),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _selectedFolderId == 'bookmarks'
-                            ? Colors.white.withOpacity(0.2)
-                            : const Color(0xFF9C834F).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _getEntryCount('bookmarks').toString(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _selectedFolderId == 'bookmarks'
-                              ? Colors.white
-                              : const Color(0xFF9C834F),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // User created folders
-          ..._folders.map((folder) {
-            final isSelected = folder.id == _selectedFolderId;
-            final entriesInFolder = _getEntryCount(folder.id);
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: InkWell(
-                onTap: () => _selectFolder(folder.id),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF9C834F)
-                        : const Color(0xFFF5F5DB),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        folder.name,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF9C834F),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.white.withOpacity(0.2)
-                              : const Color(0xFF9C834F).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          entriesInFolder.toString(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF9C834F),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
+          _buildFolderTab(null, 'All', _getTaskCount(null)),
+          // Add other default tabs like 'Completed' or 'Due Today' if needed
+          ..._folders.map((folder) => _buildFolderTab(folder.id, folder.name, _getTaskCount(folder.id))),
         ],
       ),
     );
   }
 
-  //LOGO AND PAGE NAME
-  Widget _buildHeader() {
+  Widget _buildFolderTab(String? folderId, String name, int count) {
+    final isSelected = _selectedFolderId == folderId;
     return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 8,
-          children: [
-            Image.asset('assets/logo/LoginLogo.png',
-              height: 52,
-              width: 52,
-            ),
-            const Text(
-              'TASKS',
-              style: TextStyle(
-                color: Color(0xFF9C834F),
-                fontSize: 40,
-                fontFamily: 'Inria Sans',
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1.60,
+      padding: const EdgeInsets.only(right: 8.0),
+      child: InkWell(
+        onTap: () => _selectFolder(folderId),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF9C834F) : const Color(0xFFF5F5DB),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF9C834F), width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Text(
+                name,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF9C834F),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            const SizedBox(width: 84),
-            IconButton(
-              icon: const Icon(
-                Icons.folder_outlined,
-                color: Color(0xFF9C834F),
-                size: 32,
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFF9C834F).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(fontSize: 12, color: isSelected ? Colors.white : const Color(0xFF9C834F)),
+                ),
               ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FoldersPage(
-                      folderType: FolderType.task,
-                      title: 'TASK FOLDERS',
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        )
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -404,141 +322,127 @@ class _TasksPageState extends State<TasksPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Journal illustration
           Image.asset(
-            'assets/images/TasksIllus.png',
-            height: 240,
-            // If you don't have the image yet, use a placeholder
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                height: 240,
-                width: 240,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF9C834F)),
-                ),
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.book_outlined,
-                        size: 80,
-                        color: Color(0xFF9C834F),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        "Journal Illustration",
-                        style: TextStyle(
-                          color: Color(0xFF9C834F),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+            'assets/images/TasksIllus.png', // Replace with your tasks illustration
+            height: 200,
+            errorBuilder: (context, error, stackTrace) => 
+              const Icon(Icons.check_circle_outline, size: 100, color: Color(0xFF9C834F)),
           ),
-          const SizedBox(
-            width: 296,
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Start your',
-                    style: TextStyle(
-                      color: Color(0xFF333333),
-                      fontSize: 36,
-                      fontFamily: 'Inria Sans',
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -1.44,
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' ',
-                    style: TextStyle(
-                      color: Color(0xFF333333),
-                      fontSize: 36,
-                      fontFamily: 'Inria Sans',
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -1.44,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'Journey',
-                    style: TextStyle(
-                      color: Color(0xFF9C834F),
-                      fontSize: 36,
-                      fontStyle: FontStyle.italic,
-                      fontFamily: 'Inria Sans',
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -1.44,
-                    ),
-                  ),
-                  TextSpan(
-                    text: ' ',
-                    style: TextStyle(
-                      color: Color(0xFF333333),
-                      fontSize: 36,
-                      fontFamily: 'Inria Sans',
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -1.44,
-                    ),
-                  ),
-                ],
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(
-            width: 296,
-            child: Text(
-              'Create your personal task.     Tap the plus button to get started.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF333333),
-                fontSize: 16,
-                fontFamily: 'Inria Sans',
-                fontWeight: FontWeight.w400,
-                letterSpacing: -0.64,
-              ),
-            ),
-          ),
-
-          // For demo purposes - button to toggle between states
           const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _toggleTasks,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF9C834F),
-            ),
-            child: const Text('Toggle Tasks (Demo)'),
+          const Text(
+            'No Tasks Yet',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Tap the + button to add your first task.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
         ],
       ),
     );
   }
 
-  //SEARCH BAR
-  Widget _buildTasksList() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16.0),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16.0,
-        mainAxisSpacing: 16.0,
-        childAspectRatio: 1.0,
-      ),
+  Widget _buildTaskList() {
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 80), // Space for FAB and Nav bar
       itemCount: _filteredTasks.length,
       itemBuilder: (context, index) {
         final task = _filteredTasks[index];
         return TaskCard(
+          key: ValueKey(task.id),
           task: task,
-          onToggleSubTask: _toggleSubTaskCompletion,
-          onAddSubTask: () {
-            // TODO: Implement add subtask
+          onTap: () => _navigateToTaskEntry(task),
+          onCompletionToggle: (isCompleted) => _handleToggleCompletion(task.id, isCompleted),
+          onMove: () => _handleMoveTask(task.id, task.folderId),
+          onArchive: () => _handleArchiveTask(task.id, task.title),
+          onSubTaskToggle: (subTaskId, isCompleted) async {
+            final String currentTaskId = task.id; // task is from the itemBuilder scope
+
+            // --- Immediate local UI update ---
+            setState(() {
+              final filteredTaskIndex = _filteredTasks.indexWhere((t) => t.id == currentTaskId);
+              if (filteredTaskIndex != -1) {
+                final taskInFiltered = _filteredTasks[filteredTaskIndex];
+                final subTaskIndex = taskInFiltered.subTasks.indexWhere((st) => st.id == subTaskId);
+                if (subTaskIndex != -1) {
+                  taskInFiltered.subTasks[subTaskIndex].isCompleted = isCompleted;
+                }
+              }
+
+              final currentTaskIndex = _currentFolderTasks.indexWhere((t) => t.id == currentTaskId);
+              if (currentTaskIndex != -1) {
+                final taskInCurrent = _currentFolderTasks[currentTaskIndex];
+                final subTaskIndex = taskInCurrent.subTasks.indexWhere((st) => st.id == subTaskId);
+                if (subTaskIndex != -1) {
+                  taskInCurrent.subTasks[subTaskIndex].isCompleted = isCompleted;
+                }
+              }
+
+              final allTaskIndex = _allTasks.indexWhere((t) => t.id == currentTaskId);
+              if (allTaskIndex != -1) {
+                final taskInAll = _allTasks[allTaskIndex];
+                final subTaskIndex = taskInAll.subTasks.indexWhere((st) => st.id == subTaskId);
+                if (subTaskIndex != -1) {
+                  taskInAll.subTasks[subTaskIndex].isCompleted = isCompleted;
+                }
+              }
+            });
+            // --- End immediate local UI update ---
+
+            try {
+              // Fetch the task for backend update. Assumes task exists in at least one of these lists.
+              Task taskForBackendUpdate;
+              int taskIdx = _currentFolderTasks.indexWhere((t) => t.id == currentTaskId);
+              if (taskIdx != -1) {
+                taskForBackendUpdate = _currentFolderTasks[taskIdx];
+              } else {
+                taskIdx = _allTasks.indexWhere((t) => t.id == currentTaskId);
+                if (taskIdx != -1) {
+                  taskForBackendUpdate = _allTasks[taskIdx];
+                } else {
+                  // This case should ideally not be reached if currentTaskId is valid and lists are synced.
+                  throw Exception('Task not found for backend update');
+                }
+              }
+              await _taskService.updateSubTasks(currentTaskId, taskForBackendUpdate.subTasks);
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error updating subtask: $e')),
+                );
+                // Revert local change if backend fails
+                setState(() {
+                  final filteredTaskIndex = _filteredTasks.indexWhere((t) => t.id == currentTaskId);
+                  if (filteredTaskIndex != -1) {
+                    final taskInFiltered = _filteredTasks[filteredTaskIndex];
+                    final subTaskIndex = taskInFiltered.subTasks.indexWhere((st) => st.id == subTaskId);
+                    if (subTaskIndex != -1) {
+                      taskInFiltered.subTasks[subTaskIndex].isCompleted = !isCompleted; // Revert
+                    }
+                  }
+
+                  final currentTaskIndex = _currentFolderTasks.indexWhere((t) => t.id == currentTaskId);
+                  if (currentTaskIndex != -1) {
+                    final taskInCurrent = _currentFolderTasks[currentTaskIndex];
+                    final subTaskIndex = taskInCurrent.subTasks.indexWhere((st) => st.id == subTaskId);
+                    if (subTaskIndex != -1) {
+                      taskInCurrent.subTasks[subTaskIndex].isCompleted = !isCompleted; // Revert
+                    }
+                  }
+
+                  final allTaskIndex = _allTasks.indexWhere((t) => t.id == currentTaskId);
+                  if (allTaskIndex != -1) {
+                    final taskInAll = _allTasks[allTaskIndex];
+                    final subTaskIndex = taskInAll.subTasks.indexWhere((st) => st.id == subTaskId);
+                    if (subTaskIndex != -1) {
+                      taskInAll.subTasks[subTaskIndex].isCompleted = !isCompleted; // Revert
+                    }
+                  }
+                });
+              }
+            }
           },
         );
       },
@@ -549,164 +453,37 @@ class _TasksPageState extends State<TasksPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Container(
-        width: 249,
-        height: 32,
+        width: MediaQuery.of(context).size.width * 0.7, // Adjust width as needed
+        height: 36,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: ShapeDecoration(
           color: const Color(0xFFF5F5DB),
           shape: RoundedRectangleBorder(
-            side: const BorderSide(
-              width: 1.5,
-              color: Color(0xFF9C834F),
-            ),
+            side: const BorderSide(width: 1.5, color: Color(0xFF9C834F)),
             borderRadius: BorderRadius.circular(18),
           ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x3F000000),
-              blurRadius: 4,
-              offset: Offset(0, 4),
-              spreadRadius: 0,
-            ),
-          ],
+          shadows: const [BoxShadow(color: Color(0x3F000000), blurRadius: 4, offset: Offset(0, 4))],
         ),
-        child: const Row(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search,
-              color: Color(0x7F9C834F),
-              size: 20,
-            ),
-            SizedBox(width: 8),
+            const Icon(Icons.search, color: Color(0x7F9C834F), size: 20),
+            const SizedBox(width: 8),
             Expanded(
               child: TextField(
-                style: TextStyle(
-                  fontFamily: 'Inria Sans',
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.24,
-                  color: Colors.black,
-                ),
-                decoration: InputDecoration(
+                controller: _searchController,
+                onChanged: _filterTasks,
+                style: const TextStyle(fontSize: 12, color: Colors.black),
+                decoration: const InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
-                  hintText: 'Search for Leaves',
-                  hintStyle: TextStyle(
-                    color: Color(0x7F9C834F),
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    fontFamily: 'Inria Sans',
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: -0.24,
-                  ),
+                  hintText: 'Search for Tasks...',
+                  hintStyle: TextStyle(color: Color(0x7F9C834F), fontSize: 12, fontStyle: FontStyle.italic),
                 ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  //NAVIGATION BAR
-  Widget _buildNavigationBar() {
-    return SizedBox(
-      width: 320,
-      height: 65,
-      child: Stack(
-        children: [
-          // Background bar with 4 icons
-          Positioned(
-            bottom:12.0, // move it up from the screen edge
-            left: 0,
-            top: 11,
-            child: Container(
-              height: 54,
-              width: 320,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              decoration: ShapeDecoration(
-                color: const Color(0xFF9C834F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(40),
-                ),
-                shadows: const [
-                  BoxShadow(
-                    color: Color(0x3F000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 4),
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/journal');
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/notes');
-                    },
-                  ),
-                  const SizedBox(width: 48), // space for center button
-                  IconButton(
-                    icon: const Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/tasks');
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Center floating action button
-          Positioned(
-            left: 136,
-            top: 0,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: const ShapeDecoration(
-                color: Color(0xFFF5F5DB),
-                shape: OvalBorder(
-                  side: BorderSide(
-                    width: 1.5,
-                    color: Color(0xFF9C834F),
-                  ),
-                ),
-              ),
-              child: Center(
-                child: IconButton(
-                  icon: const Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
-                  onPressed: () {
-                    // Navigate to task entry page
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const TaskEntryPage()),
-                    ).then((_) {
-                      // Refresh tasks when returning from task entry page
-                      _loadTasks();
-                    });
-                  },
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(
-            height: 10,
-          )
-        ],
       ),
     );
   }

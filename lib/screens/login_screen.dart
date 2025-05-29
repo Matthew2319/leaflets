@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('email', userData['email']);
 
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/journal');
+        Navigator.pushReplacementNamed(context, '/main');
       }
     } catch (e) {
       if (mounted) {

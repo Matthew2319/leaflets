@@ -140,7 +140,7 @@ class _NotesPageState extends State<NotesPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Note moved successfully')),
           );
-        }
+  }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -257,7 +257,7 @@ class _NotesPageState extends State<NotesPage> {
             _buildSearchBar(),
             
             // Navigation bar
-            _buildNavigationBar(),
+            // _buildNavigationBar(), // REMOVED
           ],
         ),
       ),
@@ -672,99 +672,99 @@ class _NotesPageState extends State<NotesPage> {
   //   );
   // }
 //NAVIGATION BAR
-  Widget _buildNavigationBar() {
-    return SizedBox(
-      width: 320,
-      height: 65,
-      child: Stack(
-        children: [
-          // Background bar with 4 icons
-          Positioned(
-            bottom:12.0, // move it up from the screen edge
-            left: 0,
-            top: 11,
-            child: Container(
-              height: 54,
-              width: 320,
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              decoration: ShapeDecoration(
-                color: const Color(0xFF9C834F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(40),
-                ),
-                shadows: const [
-                  BoxShadow(
-                    color: Color(0x3F000000),
-                    blurRadius: 4,
-                    offset: Offset(0, 4),
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/journal');
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/notes');
-                    },
-                  ),
-                  const SizedBox(width: 48), // space for center button
-                  IconButton(
-                    icon: const Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, '/tasks');
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Center floating action button
-          Positioned(
-            left: 136,
-            top: 0,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: const ShapeDecoration(
-                color: Color(0xFFF5F5DB),
-                shape: OvalBorder(
-                  side: BorderSide(
-                    width: 1.5,
-                    color: Color(0xFF9C834F),
-                  ),
-                ),
-              ),
-              child: Center(
-                child: IconButton(
-                  icon: const Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const NoteEntryPage()),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(
-            height: 10,
-          )
-        ],
-      ),
-    );
-  }
+  // Widget _buildNavigationBar() { // ENTIRE METHOD REMOVED
+  //   return SizedBox(
+  //     width: 320,
+  //     height: 65,
+  //     child: Stack(
+  //       children: [
+  //         // Background bar with 4 icons
+  //         Positioned(
+  //           bottom:12.0, // move it up from the screen edge
+  //           left: 0,
+  //           top: 11,
+  //           child: Container(
+  //             height: 54,
+  //             width: 320,
+  //             padding: const EdgeInsets.symmetric(horizontal: 28),
+  //             decoration: ShapeDecoration(
+  //               color: const Color(0xFF9C834F),
+  //               shape: RoundedRectangleBorder(
+  //                 borderRadius: BorderRadius.circular(40),
+  //               ),
+  //               shadows: const [
+  //                 BoxShadow(
+  //                   color: Color(0x3F000000),
+  //                   blurRadius: 4,
+  //                   offset: Offset(0, 4),
+  //                   spreadRadius: 0,
+  //                 ),
+  //               ],
+  //             ),
+  //             child: Row(
+  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //               children: [
+  //                 IconButton(
+  //                   icon: const Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
+  //                   onPressed: () {
+  //                     Navigator.pushReplacementNamed(context, '/journal');
+  //                   },
+  //                 ),
+  //                 IconButton(
+  //                   icon: const Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
+  //                   onPressed: () {
+  //                     Navigator.pushReplacementNamed(context, '/notes');
+  //                   },
+  //                 ),
+  //                 const SizedBox(width: 48), // space for center button
+  //                 IconButton(
+  //                   icon: const Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
+  //                   onPressed: () {
+  //                     Navigator.pushReplacementNamed(context, '/tasks');
+  //                   },
+  //                 ),
+  //                 IconButton(
+  //                   icon: const Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
+  //                   onPressed: () {},
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //         // Center floating action button
+  //         Positioned(
+  //           left: 136,
+  //           top: 0,
+  //           child: Container(
+  //             width: 48,
+  //             height: 48,
+  //             decoration: const ShapeDecoration(
+  //               color: Color(0xFFF5F5DB),
+  //               shape: OvalBorder(
+  //                 side: BorderSide(
+  //                   width: 1.5,
+  //                   color: Color(0xFF9C834F),
+  //                 ),
+  //               ),
+  //             ),
+  //             child: Center(
+  //               child: IconButton(
+  //                 icon: const Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
+  //                 onPressed: () {
+  //                   Navigator.push(
+  //                     context,
+  //                     MaterialPageRoute(builder: (context) => const NoteEntryPage()),
+  //                   );
+  //                 },
+  //               ),
+  //             ),
+  //           ),
+  //         ),
+  //         const SizedBox(
+  //           height: 10,
+  //         )
+  //       ],
+  //     ),
+  //   );
+  // }
 }

@@ -4,14 +4,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:leaflets/screens/journal_entry_page.dart';
 import 'package:leaflets/screens/note_entry_page.dart';
 import 'package:leaflets/screens/task_entry_page.dart';
+import 'package:leaflets/screens/main_page.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
-import 'screens/journal_page.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/notes_page.dart';
 import 'screens/folders_page.dart';
-import 'screens/tasks_page.dart';
 import 'firebase_options.dart';
 import 'models/folder.dart';
 
@@ -66,13 +64,11 @@ class LeafletsApp extends StatelessWidget {
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
-        '/journal': (context) => const JournalPage(),
-        '/notes': (context) => const NotesPage(),
+        '/main': (context) => const MainPage(),
         '/folders': (context) => const FoldersPage(
           folderType: FolderType.journal,
           title: 'FOLDERS',
         ),
-        '/tasks': (context) => const TasksPage(),
         '/journalentry': (context) => const JournalEntryPage(),
         '/noteentry': (context) => const NoteEntryPage(),
         '/taskentry': (context) => const TaskEntryPage(),

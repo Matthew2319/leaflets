@@ -76,13 +76,93 @@ class NoteCard extends StatelessWidget {
               if (!note.isArchived)
                 _buildOptionButton(
                   icon: Icons.archive_outlined,
-                  label: 'Move to Recently Deleted',
+                  label: 'Delete Item',
                   color: const Color(0xFFFF6B6B),
                   onTap: () {
                     Navigator.pop(context);
-                    if (onArchive != null) {
-                      onArchive!();
-                    }
+                    // Show confirmation dialog before archiving
+                    showDialog(
+                      context: context,
+                      builder: (dialogContext) => Dialog(
+                        backgroundColor: Colors.transparent,
+                        insetPadding: EdgeInsets.zero,
+                        alignment: Alignment.bottomCenter,
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.symmetric(horizontal: 16.0).copyWith(bottom: 20.0),
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F5DB),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.delete_outline,
+                                color: Colors.red,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Delete Item?',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF333333),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Delete "${note.title}"?\nItem will be moved to Recently Deleted.',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  TextButton.icon(
+                                    icon: const Icon(
+                                      Icons.close,
+                                      color: Color(0xFF9C834F),
+                                    ),
+                                    label: const Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        color: Color(0xFF9C834F),
+                                      ),
+                                    ),
+                                    onPressed: () => Navigator.pop(dialogContext),
+                                  ),
+                                  TextButton.icon(
+                                    icon: const Icon(
+                                      Icons.delete_outline,
+                                      color: Colors.red,
+                                    ),
+                                    label: const Text(
+                                      'Delete',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      if (onArchive != null) {
+                                        onArchive!();
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
                   },
                 ),
             ],
@@ -142,60 +222,60 @@ class NoteCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        decoration: BoxDecoration(
+      decoration: BoxDecoration(
           color: const Color(0xFFF5F5DB),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
         child: Stack(
           children: [
             // Note content
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                   // Title
-                  Text(
-                    note.title,
-                    style: const TextStyle(
+            Text(
+              note.title,
+              style: const TextStyle(
                       color: Color(0xFF9C834F),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
                   // Content
-                  Expanded(
-                    child: Text(
-                      note.content,
-                      style: const TextStyle(
+            Expanded(
+              child: Text(
+                note.content,
+                style: const TextStyle(
                         color: Colors.black87,
-                        fontSize: 14,
-                      ),
+                  fontSize: 14,
+                ),
                       maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 8),
                   // Date and options row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Date
-                      Text(
+            Text(
                         _formatDate(note.createdAt),
-                        style: const TextStyle(
+              style: const TextStyle(
                           color: Colors.black54,
-                          fontSize: 12,
+                fontSize: 12,
                         ),
                       ),
                       // Options menu
@@ -227,8 +307,8 @@ class NoteCard extends StatelessWidget {
                   Icons.bookmark,
                   color: const Color(0xFF9C834F).withOpacity(0.3),
                   size: 24,
-                ),
               ),
+            ),
           ],
         ),
       ),

@@ -78,9 +78,10 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
         builder: (context) => Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.zero,
+          alignment: Alignment.bottomCenter,
           child: Container(
             width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 16.0),
+            margin: const EdgeInsets.symmetric(horizontal: 16.0).copyWith(bottom: 20.0),
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: const Color(0xFFF5F5DB),
@@ -161,9 +162,10 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
         builder: (context) => Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.zero,
+          alignment: Alignment.bottomCenter,
           child: Container(
             width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 16.0),
+            margin: const EdgeInsets.symmetric(horizontal: 16.0).copyWith(bottom: 20.0),
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: const Color(0xFFF5F5DB),
@@ -179,7 +181,7 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Move to Recently Deleted?',
+                  'Delete Item?',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -188,7 +190,7 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Move "${widget.entry.title}" to Recently Deleted?',
+                  'Delete "${widget.entry.title}"?\nItem will be moved to Recently Deleted.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 14,
@@ -218,7 +220,7 @@ class _JournalEntryCardState extends State<JournalEntryCard> {
                         color: Colors.red,
                       ),
                       label: const Text(
-                        'Move',
+                        'Delete',
                         style: TextStyle(
                           color: Colors.red,
                         ),

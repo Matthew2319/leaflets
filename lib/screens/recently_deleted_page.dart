@@ -5,6 +5,8 @@ import '../models/note.dart';
 import '../services/note_service.dart';
 import '../models/folder.dart';
 import '../widgets/recently_deleted_item_card.dart';
+import '../services/task_service.dart';
+import '../models/task.dart';
 
 class RecentlyDeletedPage extends StatefulWidget {
   final FolderType entryType;
@@ -21,6 +23,7 @@ class RecentlyDeletedPage extends StatefulWidget {
 class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
   final JournalService _journalService = JournalService();
   final NoteService _noteService = NoteService();
+  final TaskService _taskService = TaskService();
   List<dynamic> _deletedItems = [];
   bool _isLoading = true;
 
@@ -61,6 +64,21 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
           });
         },
       );
+    } else if (widget.entryType == FolderType.task) {
+      _taskService.getArchivedTasks().listen(
+        (tasks) {
+          setState(() {
+            _deletedItems = tasks;
+            _isLoading = false;
+          });
+        },
+        onError: (error) {
+          print('Error loading deleted tasks: $error');
+          setState(() {
+            _isLoading = false;
+          });
+        },
+      );
     }
   }
 
@@ -70,6 +88,8 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
         await _journalService.restoreEntry(itemId);
       } else if (widget.entryType == FolderType.note) {
         await _noteService.restoreNote(itemId);
+      } else if (widget.entryType == FolderType.task) {
+        await _taskService.restoreTask(itemId);
       }
       setState(() {
         _deletedItems.removeWhere((item) => item.id == itemId);
@@ -92,9 +112,10 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.zero,
+        alignment: Alignment.bottomCenter,
         child: Container(
           width: double.infinity,
-          margin: const EdgeInsets.symmetric(horizontal: 16.0),
+          margin: const EdgeInsets.symmetric(horizontal: 16.0).copyWith(bottom: 20.0),
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
             color: const Color(0xFFF5F5DB),
@@ -170,6 +191,8 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
           await _journalService.permanentlyDeleteEntry(itemId);
         } else if (widget.entryType == FolderType.note) {
           await _noteService.deleteNote(itemId);
+        } else if (widget.entryType == FolderType.task) {
+          await _taskService.deleteTask(itemId);
         }
         setState(() {
           _deletedItems.removeWhere((item) => item.id == itemId);
@@ -221,7 +244,7 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
                           : _deletedItems.isEmpty
                               ? Center(
                                   child: Text(
-                                    'No deleted ${widget.entryType == FolderType.journal ? 'entries' : 'notes'}',
+                                    'No deleted ${widget.entryType == FolderType.journal ? 'entries' : (widget.entryType == FolderType.note ? 'notes' : 'tasks')}',
                                     style: const TextStyle(
                                       color: Color(0xFF9C834F),
                                       fontSize: 16,
@@ -236,6 +259,8 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
                                     if (item is JournalEntry) {
                                       title = item.title;
                                     } else if (item is Note) {
+                                      title = item.title;
+                                    } else if (item is Task) {
                                       title = item.title;
                                     } else {
                                       title = 'Unknown Item'; // Should not happen
@@ -277,7 +302,7 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
                     onPressed: () => Navigator.pop(context),
                   ),
                   Text(
-                    'RECENTLY DELETED ${widget.entryType == FolderType.journal ? 'ENTRIES' : 'NOTES'}',
+                    'RECENTLY DELETED ${widget.entryType == FolderType.journal ? 'ENTRIES' : (widget.entryType == FolderType.note ? 'NOTES' : 'TASKS')}',
                     style: const TextStyle(
                       color: Color(0xFF9C834F),
                       fontSize: 16,

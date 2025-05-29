@@ -47,10 +47,11 @@ class _MoodSelectionDialogState extends State<MoodSelectionDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: EdgeInsets.zero,
+      alignment: Alignment.bottomCenter,
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 24.0),
-        padding: const EdgeInsets.all(24.0),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0).copyWith(bottom: 20.0),
+        padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: const Color(0xFFF5F5DB),
           borderRadius: BorderRadius.circular(16),
