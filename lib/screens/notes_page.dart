@@ -3,6 +3,8 @@ import '../models/note.dart';
 import '../models/folder.dart';
 import '../widgets/note_card.dart';
 import '../services/folder_service.dart';
+import '../services/note_service.dart';
+import '../widgets/move_entry_dialog.dart';
 import 'note_entry_page.dart';
 import 'folders_page.dart';
 
@@ -15,17 +17,27 @@ class NotesPage extends StatefulWidget {
 
 class _NotesPageState extends State<NotesPage> {
   final FolderService _folderService = FolderService();
-  List<Note> _notes = [];
+  final NoteService _noteService = NoteService();
+  List<Note> _allNotes = []; // All notes for counting
+  List<Note> _notes = []; // Current folder notes
+  List<Note> _filteredNotes = []; // Search filtered notes
   List<Folder> _folders = [];
   String? _selectedFolderId;
   bool _isLoading = true;
-  bool _showNotes = false; // Toggle this for demo purposes
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _subscribeFolders();
-    _loadNotes();
+    _subscribeToAllNotes();
+    _subscribeToNotes();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _subscribeFolders() {
@@ -33,14 +45,10 @@ class _NotesPageState extends State<NotesPage> {
       (folders) {
         setState(() {
           _folders = folders;
-          _isLoading = false;
         });
       },
       onError: (error) {
         print('Error loading folders: $error');
-        setState(() {
-          _isLoading = false;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading folders: $error')),
         );
@@ -48,54 +56,173 @@ class _NotesPageState extends State<NotesPage> {
     );
   }
 
-  void _loadNotes() {
-    if (_showNotes) {
-      _notes = List.generate(
-        7,
-        (index) => Note(
-          id: (index + 1).toString(),
-          title: 'Note Title #${index + 1}',
-          content: "On Today's thoughts, I had a...",
-          createdAt: DateTime.now().subtract(Duration(days: index)),
-          folderId: index < 3 ? 'home' : 'work',
-        ),
-      );
-    } else {
-      _notes = [];
-    }
+  void _subscribeToAllNotes() {
+    _noteService.getNotes().listen(
+      (notes) {
+        setState(() {
+          _allNotes = notes;
+        });
+      },
+      onError: (error) {
+        print('Error loading all notes: $error');
+      },
+    );
   }
 
-  // For demo purposes - toggle between empty and filled states
-  void _toggleNotes() {
+  void _subscribeToNotes() {
+    _noteService.getNotes(folderId: _selectedFolderId).listen(
+      (notes) {
+        setState(() {
+          _notes = notes;
+          _filteredNotes = notes;
+          _isLoading = false;
+        });
+      },
+      onError: (error) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading notes: $error')),
+        );
+      },
+    );
+  }
+
+  void _filterNotes(String query) {
     setState(() {
-      _showNotes = !_showNotes;
-      _loadNotes();
+      if (query.isEmpty) {
+        _filteredNotes = _notes;
+      } else {
+        _filteredNotes = _notes.where((note) {
+          final titleMatch = note.title.toLowerCase().contains(query.toLowerCase());
+          final contentMatch = note.content.toLowerCase().contains(query.toLowerCase());
+          return titleMatch || contentMatch;
+        }).toList();
+      }
     });
-  }
-
-  List<Note> get _filteredNotes {
-    if (_selectedFolderId == null) {
-      return _notes;
-    } else if (_selectedFolderId == 'bookmarks') {
-      return _notes.where((note) => note.isBookmark).toList();
-    } else {
-      return _notes.where((note) => note.folderId == _selectedFolderId).toList();
-    }
   }
 
   void _selectFolder(String? folderId) {
     setState(() {
       _selectedFolderId = folderId;
+      _searchController.clear();
     });
+    _subscribeToNotes();
+  }
+
+  void _handleBookmarkToggle(String noteId, bool newValue) async {
+    try {
+      await _noteService.toggleBookmark(noteId, newValue);
+      // No need to manually update state as the stream will handle it
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating bookmark status: $e')),
+        );
+      }
+    }
+  }
+
+  void _handleMoveNote(String noteId, String? currentFolderId) async {
+    final newFolderId = await showDialog<String>(
+      context: context,
+      builder: (context) => MoveEntryDialog(
+        currentFolderId: currentFolderId ?? '',
+        folderType: FolderType.note,
+      ),
+    );
+
+    if (newFolderId != null && newFolderId != currentFolderId) {
+      try {
+        await _noteService.moveNote(noteId, newFolderId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Note moved successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error moving note: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _handleArchiveNote(String noteId, String title) async {
+    try {
+      await _noteService.archiveNote(noteId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Note moved to Recently Deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error moving note to Recently Deleted: $e')),
+        );
+      }
+    }
+  }
+
+  void _handleDeleteNote(String noteId, String title) async {
+    try {
+      await _noteService.deleteNote(noteId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Note permanently deleted')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting note: $e')),
+        );
+      }
+    }
+  }
+
+  void _navigateToFolders() async {
+    final selectedFolderId = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FoldersPage(
+          folderType: FolderType.note,
+          title: 'NOTE FOLDERS',
+        ),
+      ),
+    );
+    
+    if (selectedFolderId != null) {
+      _selectFolder(selectedFolderId);
+    }
+  }
+
+  void _navigateToNoteEntry(Note? note) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NoteEntryPage(
+          noteId: note?.id,
+          initialTitle: note?.title,
+          initialContent: note?.content,
+          initialFolderId: note?.folderId,
+          currentFolderId: _selectedFolderId,
+        ),
+      ),
+    );
   }
 
   int _getEntryCount(String? folderId) {
     if (folderId == null) {
-      return _notes.length;
+      return _allNotes.where((note) => !note.isArchived).length;
     } else if (folderId == 'bookmarks') {
-      return _notes.where((note) => note.isBookmark).length;
+      return _allNotes.where((note) => note.isBookmark && !note.isArchived).length;
     } else {
-      return _notes.where((note) => note.folderId == folderId).length;
+      return _allNotes.where((note) => note.folderId == folderId && !note.isArchived).length;
     }
   }
 
@@ -122,8 +249,8 @@ class _NotesPageState extends State<NotesPage> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _notes.isEmpty
-                      ? _buildEmptyState()
-                      : _buildNotesList(),
+                  ? _buildEmptyState()
+                  : _buildNotesList(),
             ),
             
             // Search bar
@@ -192,177 +319,97 @@ class _NotesPageState extends State<NotesPage> {
         scrollDirection: Axis.horizontal,
         children: [
           // All folder tab (always first)
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
-              onTap: () => _selectFolder(null),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: _selectedFolderId == null
-                      ? const Color(0xFF9C834F)
-                      : const Color(0xFFF5F5DB),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF9C834F),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'All',
-                      style: TextStyle(
-                        color: _selectedFolderId == null
-                            ? Colors.white
-                            : const Color(0xFF9C834F),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _selectedFolderId == null
-                            ? Colors.white.withOpacity(0.2)
-                            : const Color(0xFF9C834F).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _getEntryCount(null).toString(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _selectedFolderId == null
-                              ? Colors.white
-                              : const Color(0xFF9C834F),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _buildFolderTab(
+            name: 'All',
+            isSelected: _selectedFolderId == null,
+            count: _getEntryCount(null),
+            onTap: () => _selectFolder(null),
+            isDefaultFolder: true,
           ),
 
           // Bookmarks folder tab (always second)
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
-              onTap: () => _selectFolder('bookmarks'),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: _selectedFolderId == 'bookmarks'
-                      ? const Color(0xFF9C834F)
-                      : const Color(0xFFF5F5DB),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: const Color(0xFF9C834F),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Bookmarks',
-                      style: TextStyle(
-                        color: _selectedFolderId == 'bookmarks'
-                            ? Colors.white
-                            : const Color(0xFF9C834F),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _selectedFolderId == 'bookmarks'
-                            ? Colors.white.withOpacity(0.2)
-                            : const Color(0xFF9C834F).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        _getEntryCount('bookmarks').toString(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _selectedFolderId == 'bookmarks'
-                              ? Colors.white
-                              : const Color(0xFF9C834F),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _buildFolderTab(
+            name: 'Bookmarks',
+            isSelected: _selectedFolderId == 'bookmarks',
+            count: _getEntryCount('bookmarks'),
+            onTap: () => _selectFolder('bookmarks'),
+            isDefaultFolder: true,
           ),
 
           // User created folders
-          ..._folders.map((folder) {
-            final isSelected = folder.id == _selectedFolderId;
-            final entriesInFolder = _getEntryCount(folder.id);
+          ..._folders.map((folder) => _buildFolderTab(
+            name: folder.name,
+            isSelected: folder.id == _selectedFolderId,
+            count: _getEntryCount(folder.id),
+            onTap: () => _selectFolder(folder.id),
+          )),
+        ],
+      ),
+    );
+  }
 
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: InkWell(
-                onTap: () => _selectFolder(folder.id),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  decoration: BoxDecoration(
+  Widget _buildFolderTab({
+    required String name,
+    required bool isSelected,
+    required int count,
+    required VoidCallback onTap,
+    bool isDefaultFolder = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF9C834F)
+                : const Color(0xFFF5F5DB),
+            borderRadius: BorderRadius.circular(20),
+            border: isDefaultFolder
+                ? Border.all(
+                    color: const Color(0xFF9C834F),
+                    width: 1.5,
+                  )
+                : null,
+          ),
+          child: Row(
+            children: [
+              Text(
+                name,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(0xFF9C834F),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.2)
+                      : const Color(0xFF9C834F).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(
+                    fontSize: 12,
                     color: isSelected
-                        ? const Color(0xFF9C834F)
-                        : const Color(0xFFF5F5DB),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        folder.name,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF9C834F),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.white.withOpacity(0.2)
-                              : const Color(0xFF9C834F).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          entriesInFolder.toString(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF9C834F),
-                          ),
-                        ),
-                      ),
-                    ],
+                        ? Colors.white
+                        : const Color(0xFF9C834F),
                   ),
                 ),
               ),
-            );
-          }).toList(),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -374,7 +421,7 @@ class _NotesPageState extends State<NotesPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Journal illustration
+          // Notes illustration
           Image.asset(
             'assets/images/NotesIllus.png',
             height: 240,
@@ -393,13 +440,13 @@ class _NotesPageState extends State<NotesPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.book_outlined,
+                        Icons.description_outlined,
                         size: 80,
                         color: Color(0xFF9C834F),
                       ),
                       SizedBox(height: 16),
                       Text(
-                        "Journal Illustration",
+                        "Notes Illustration",
                         style: TextStyle(
                           color: Color(0xFF9C834F),
                         ),
@@ -446,16 +493,6 @@ class _NotesPageState extends State<NotesPage> {
                       letterSpacing: -1.44,
                     ),
                   ),
-                  TextSpan(
-                    text: ' ',
-                    style: TextStyle(
-                      color: Color(0xFF333333),
-                      fontSize: 36,
-                      fontFamily: 'Inria Sans',
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -1.44,
-                    ),
-                  ),
                 ],
               ),
               textAlign: TextAlign.center,
@@ -464,7 +501,7 @@ class _NotesPageState extends State<NotesPage> {
           const SizedBox(
             width: 296,
             child: Text(
-              'Create your personal note.     Tap the plus button to get started.',
+              'Create your personal note.\nTap the plus button to get started.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF333333),
@@ -474,27 +511,18 @@ class _NotesPageState extends State<NotesPage> {
                 letterSpacing: -0.64,
               ),
             ),
-          ),
-
-
-          // For demo purposes - button to toggle between states
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _toggleNotes,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF9C834F),
-                    ),
-                    child: const Text('Toggle Notes (Demo)'),
                   ),
         ],
       ),
     );
   }
 
-
-
   Widget _buildNotesList() {
+    // Filter notes for bookmarks folder
+    final displayedNotes = _selectedFolderId == 'bookmarks'
+        ? _filteredNotes.where((note) => note.isBookmark).toList()
+        : _filteredNotes;
+
     return GridView.builder(
       padding: const EdgeInsets.all(16.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -503,43 +531,21 @@ class _NotesPageState extends State<NotesPage> {
         mainAxisSpacing: 16.0,
         childAspectRatio: 1.0,
       ),
-      itemCount: _filteredNotes.length,
+      itemCount: displayedNotes.length,
       itemBuilder: (context, index) {
-        final note = _filteredNotes[index];
-        return NoteCard(note: note);
+        final note = displayedNotes[index];
+        return NoteCard(
+          note: note,
+          onTap: () => _navigateToNoteEntry(note),
+          onBookmarkToggle: (newValue) => _handleBookmarkToggle(note.id, newValue),
+          onMove: () => _handleMoveNote(note.id, note.folderId),
+          onArchive: () => _handleArchiveNote(note.id, note.title),
+          onDelete: () => _handleDeleteNote(note.id, note.title),
+        );
       },
     );
   }
 
-  // Widget _buildSearchBar() {
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-  //     child: Container(
-  //       height: 40,
-  //       decoration: BoxDecoration(
-  //         color: Colors.white,
-  //         borderRadius: BorderRadius.circular(20),
-  //         border: Border.all(color: const Color(0xFF9C834F).withOpacity(0.3)),
-  //       ),
-  //       child: TextField(
-  //         decoration: InputDecoration(
-  //           hintText: 'Search for Leaves',
-  //           hintStyle: TextStyle(
-  //             color: Colors.grey,
-  //             fontSize: 14,
-  //           ),
-  //           prefixIcon: Icon(
-  //             Icons.search,
-  //             color: Colors.grey,
-  //             size: 20,
-  //           ),
-  //           border: InputBorder.none,
-  //           contentPadding: const EdgeInsets.symmetric(vertical: 8.0),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -565,18 +571,20 @@ class _NotesPageState extends State<NotesPage> {
             ),
           ],
         ),
-        child: const Row(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.search,
               color: Color(0x7F9C834F),
               size: 20,
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             Expanded(
               child: TextField(
-                style: TextStyle(
+                controller: _searchController,
+                onChanged: _filterNotes,
+                style: const TextStyle(
                   fontFamily: 'Inria Sans',
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
@@ -584,7 +592,7 @@ class _NotesPageState extends State<NotesPage> {
                   letterSpacing: -0.24,
                   color: Colors.black,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
                   hintText: 'Search for Leaves',

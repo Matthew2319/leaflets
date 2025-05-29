@@ -386,7 +386,7 @@ class _FoldersPageState extends State<FoldersPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const RecentlyDeletedPage(),
+                          builder: (context) => RecentlyDeletedPage(entryType: widget.folderType),
                         ),
                       );
                     },

@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import '../models/journal_entry.dart';
 import '../services/journal_service.dart';
+import '../models/note.dart';
+import '../services/note_service.dart';
+import '../models/folder.dart';
+import '../widgets/recently_deleted_item_card.dart';
 
 class RecentlyDeletedPage extends StatefulWidget {
-  const RecentlyDeletedPage({super.key});
+  final FolderType entryType;
+
+  const RecentlyDeletedPage({
+    super.key,
+    required this.entryType,
+  });
 
   @override
   State<RecentlyDeletedPage> createState() => _RecentlyDeletedPageState();
@@ -11,52 +20,73 @@ class RecentlyDeletedPage extends StatefulWidget {
 
 class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
   final JournalService _journalService = JournalService();
-  List<JournalEntry> _deletedEntries = [];
+  final NoteService _noteService = NoteService();
+  List<dynamic> _deletedItems = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadDeletedEntries();
+    _loadDeletedItems();
   }
 
-  void _loadDeletedEntries() {
-    _journalService.getArchivedEntries().listen(
-      (entries) {
-        setState(() {
-          _deletedEntries = entries;
-          _isLoading = false;
-        });
-      },
-      onError: (error) {
-        print('Error loading deleted entries: $error');
-        setState(() {
-          _isLoading = false;
-        });
-      },
-    );
-  }
-
-  Future<void> _restoreEntry(String entryId) async {
-    try {
-      await _journalService.restoreEntry(entryId);
-      // Remove the entry from the local list immediately
-      setState(() {
-        _deletedEntries.removeWhere((entry) => entry.id == entryId);
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Entry restored successfully')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error restoring entry: $e')),
+  void _loadDeletedItems() {
+    if (widget.entryType == FolderType.journal) {
+      _journalService.getArchivedEntries().listen(
+        (entries) {
+          setState(() {
+            _deletedItems = entries;
+            _isLoading = false;
+          });
+        },
+        onError: (error) {
+          print('Error loading deleted journal entries: $error');
+          setState(() {
+            _isLoading = false;
+          });
+        },
+      );
+    } else if (widget.entryType == FolderType.note) {
+      _noteService.getArchivedNotes().listen(
+        (notes) {
+          setState(() {
+            _deletedItems = notes;
+            _isLoading = false;
+          });
+        },
+        onError: (error) {
+          print('Error loading deleted notes: $error');
+          setState(() {
+            _isLoading = false;
+          });
+        },
       );
     }
   }
 
-  Future<void> _permanentlyDeleteEntry(String entryId, String title) async {
+  Future<void> _restoreItem(String itemId) async {
+    try {
+      if (widget.entryType == FolderType.journal) {
+        await _journalService.restoreEntry(itemId);
+      } else if (widget.entryType == FolderType.note) {
+        await _noteService.restoreNote(itemId);
+      }
+      setState(() {
+        _deletedItems.removeWhere((item) => item.id == itemId);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item restored successfully')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error restoring item: $e')),
+      );
+    }
+  }
+
+  Future<void> _permanentlyDeleteItem(String itemId, String title) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
@@ -136,20 +166,23 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
 
     if (shouldDelete == true && mounted) {
       try {
-        await _journalService.permanentlyDeleteEntry(entryId);
-        // Remove the entry from the local list immediately
+        if (widget.entryType == FolderType.journal) {
+          await _journalService.permanentlyDeleteEntry(itemId);
+        } else if (widget.entryType == FolderType.note) {
+          await _noteService.deleteNote(itemId);
+        }
         setState(() {
-          _deletedEntries.removeWhere((entry) => entry.id == entryId);
+          _deletedItems.removeWhere((item) => item.id == itemId);
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Entry permanently deleted')),
+            const SnackBar(content: Text('Item permanently deleted')),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting entry: $e')),
+            SnackBar(content: Text('Error deleting item: $e')),
           );
         }
       }
@@ -185,91 +218,33 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
                     Expanded(
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
-                          : _deletedEntries.isEmpty
-                              ? const Center(
+                          : _deletedItems.isEmpty
+                              ? Center(
                                   child: Text(
-                                    'No deleted entries',
-                                    style: TextStyle(
+                                    'No deleted ${widget.entryType == FolderType.journal ? 'entries' : 'notes'}',
+                                    style: const TextStyle(
                                       color: Color(0xFF9C834F),
                                       fontSize: 16,
                                     ),
                                   ),
                                 )
                               : ListView.builder(
-                                  itemCount: _deletedEntries.length,
+                                  itemCount: _deletedItems.length,
                                   itemBuilder: (context, index) {
-                                    final entry = _deletedEntries[index];
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 8.0),
-                                      child: Card(
-                                        elevation: 4,
-                                        shadowColor: Colors.black26,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Container(
-                                          padding: const EdgeInsets.all(16.0),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF5F5DB),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      entry.title,
-                                                      style: const TextStyle(
-                                                        color: Color(0xFF9C834F),
-                                                        fontSize: 18,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.restore,
-                                                          color: Color(0xFF9C834F),
-                                                        ),
-                                                        onPressed: () => _restoreEntry(entry.id),
-                                                        tooltip: 'Restore',
-                                                      ),
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.delete_forever,
-                                                          color: Colors.red,
-                                                        ),
-                                                        onPressed: () => _permanentlyDeleteEntry(
-                                                          entry.id,
-                                                          entry.title,
-                                                        ),
-                                                        tooltip: 'Delete Permanently',
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                entry.content,
-                                                style: const TextStyle(
-                                                  color: Colors.black87,
-                                                  fontSize: 14,
-                                                ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
+                                    final item = _deletedItems[index];
+                                    String title;
+                                    if (item is JournalEntry) {
+                                      title = item.title;
+                                    } else if (item is Note) {
+                                      title = item.title;
+                                    } else {
+                                      title = 'Unknown Item'; // Should not happen
+                                    }
+
+                                    return RecentlyDeletedItemCard(
+                                      item: item,
+                                      onRestore: () => _restoreItem(item.id),
+                                      onPermanentlyDelete: () => _permanentlyDeleteItem(item.id, title),
                                     );
                                   },
                                 ),
@@ -282,6 +257,15 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
             // Bottom bar with title and back button
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                border: Border(
+                  top: BorderSide(
+                    color: const Color(0xFF9C834F).withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -292,16 +276,15 @@ class _RecentlyDeletedPageState extends State<RecentlyDeletedPage> {
                     ),
                     onPressed: () => Navigator.pop(context),
                   ),
-                  const Text(
-                    'RECENTLY DELETED',
-                    style: TextStyle(
+                  Text(
+                    'RECENTLY DELETED ${widget.entryType == FolderType.journal ? 'ENTRIES' : 'NOTES'}',
+                    style: const TextStyle(
                       color: Color(0xFF9C834F),
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
                     ),
                   ),
-                  const SizedBox(width: 48), // For balance
+                  const SizedBox(width: 48),
                 ],
               ),
             ),

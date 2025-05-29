@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+import '../models/note.dart';
+import '../services/note_service.dart';
 
 class NoteEntryPage extends StatefulWidget {
-  final String? folderId; // Optional folder ID if creating note in a specific folder
+  final String? noteId;
+  final String? initialTitle;
+  final String? initialContent;
+  final String? initialFolderId;
+  final String? currentFolderId;
 
   const NoteEntryPage({
     super.key,
-    this.folderId,
+    this.noteId,
+    this.initialTitle,
+    this.initialContent,
+    this.initialFolderId,
+    this.currentFolderId,
   });
 
   @override
@@ -15,6 +25,23 @@ class NoteEntryPage extends StatefulWidget {
 class _NoteEntryPageState extends State<NoteEntryPage> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _noteService = NoteService();
+  String? _selectedFolderId;
+  bool _isSaving = false;
+  bool _isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedFolderId = widget.initialFolderId ?? widget.currentFolderId;
+    
+    // Initialize controllers with existing data if editing
+    if (widget.noteId != null) {
+      _isEditing = true;
+      _titleController.text = widget.initialTitle ?? '';
+      _contentController.text = widget.initialContent ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -23,22 +50,59 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
     super.dispose();
   }
 
-  String _getCurrentDate() {
-    final now = DateTime.now();
-    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    
-    return '${days[now.weekday - 1]}, ${months[now.month - 1]} ${now.day}';
+  Future<void> _saveNote() async {
+    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in both title and content')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      if (_isEditing && widget.noteId != null) {
+        await _noteService.updateNote(
+          widget.noteId!,
+          _titleController.text,
+          _contentController.text,
+          folderId: _selectedFolderId,
+        );
+      } else {
+        await _noteService.createNote(
+          _titleController.text,
+          _contentController.text,
+          folderId: _selectedFolderId,
+        );
+      }
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving note: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DB), // Light cream background
+      backgroundColor: const Color(0xFFF5F5DB),
       body: SafeArea(
         child: Column(
           children: [
-            // Note entry content
+            // Note content
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -119,36 +183,31 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
                       Icons.arrow_back,
                       color: Color(0xFF9C834F),
                     ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                  ),
-                  
-                  // Date
-                  Text(
-                    _getCurrentDate(),
-                    style: const TextStyle(
-                      color: Color(0xFF9C834F),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    onPressed: _isSaving ? null : () => Navigator.pop(context),
                   ),
                   
                   // Done button
                   TextButton(
-                    onPressed: () {
-                      // Save note and go back
-                      _saveNote();
-                      Navigator.pop(context);
-                    },
+                    onPressed: _isSaving ? null : _saveNote,
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF9C834F),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.check_circle_outline),
-                        SizedBox(width: 4),
-                        Text('Done'),
+                        _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF9C834F),
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.check_circle_outline),
+                        const SizedBox(width: 4),
+                        Text(_isSaving ? 'Saving...' : 'Done'),
                       ],
                     ),
                   ),
@@ -159,31 +218,5 @@ class _NoteEntryPageState extends State<NoteEntryPage> {
         ),
       ),
     );
-  }
-
-  void _saveNote() {
-    // This would typically save the note to a database
-    final title = _titleController.text.trim();
-    final content = _contentController.text.trim();
-    
-    if (title.isEmpty && content.isEmpty) {
-      // Don't save empty notes
-      return;
-    }
-    
-    // For now, just print the note details
-    print('Saving note:');
-    print('Title: ${title.isEmpty ? 'Untitled' : title}');
-    print('Content: $content');
-    print('Folder ID: ${widget.folderId ?? 'None (Root)'}');
-    print('Date: ${DateTime.now()}');
-    
-    // In a real app, you would save this to a database
-    // Example with a state management solution:
-    // context.read<NotesProvider>().addNote(
-    //   title: title.isEmpty ? 'Untitled' : title,
-    //   content: content,
-    //   folderId: widget.folderId,
-    // );
   }
 }
