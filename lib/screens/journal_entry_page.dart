@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/folder.dart';
 import '../services/journal_service.dart';
-import '../services/folder_service.dart';
 import '../widgets/mood_selection_dialog.dart';
+import '../models/mood.dart';
 
 class JournalEntryPage extends StatefulWidget {
   final String? entryId;
@@ -30,27 +30,23 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _journalService = JournalService();
-  final _folderService = FolderService();
-  String _selectedMood = 'Neutral';
   String? _selectedFolderId;
-  List<Folder> _folders = [];
+  String? _selectedMood;
   bool _showMoodDialog = true;
   bool _isSaving = false;
-  bool _isEditing = false;
-  bool _isLoadingFolders = true;
+  bool _isNewEntry = true;
 
   @override
   void initState() {
     super.initState();
+    _isNewEntry = widget.entryId == null;
+    _titleController.text = widget.initialTitle ?? '';
+    _contentController.text = widget.initialContent ?? '';
+    _selectedMood = widget.initialMood;
     _selectedFolderId = widget.initialFolderId ?? widget.currentFolderId;
-    _loadFolders();
     
     // Initialize controllers with existing data if editing
     if (widget.entryId != null) {
-      _isEditing = true;
-      _titleController.text = widget.initialTitle ?? '';
-      _contentController.text = widget.initialContent ?? '';
-      _selectedMood = widget.initialMood ?? 'Neutral';
       _showMoodDialog = false;
     } else {
       // Show mood dialog when creating new entry
@@ -60,23 +56,6 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
         }
       });
     }
-  }
-
-  void _loadFolders() {
-    _folderService.getFolders().listen(
-      (folders) {
-        setState(() {
-          _folders = folders;
-          _isLoadingFolders = false;
-        });
-      },
-      onError: (error) {
-        print('Error loading folders: $error');
-        setState(() {
-          _isLoadingFolders = false;
-        });
-      },
-    );
   }
 
   @override
@@ -91,7 +70,7 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => MoodSelectionDialog(
-        initialMood: _selectedMood,
+        initialMood: _selectedMood ?? MoodData.moods[3].name,
         onCancel: () {
           Navigator.pop(context);
           Navigator.pop(context); // Go back to journal list
@@ -119,20 +98,23 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
       _isSaving = true;
     });
 
+    // Ensure a mood is selected, default to Neutral if not
+    final String moodToSave = _selectedMood ?? MoodData.moods[3].name; // Default to Neutral
+
     try {
-      if (_isEditing && widget.entryId != null) {
+      if (_isNewEntry && widget.entryId == null) {
+        await _journalService.createJournalEntry(
+          _titleController.text,
+          _contentController.text,
+          moodToSave, // Use non-nullable mood
+          folderId: _selectedFolderId,
+        );
+      } else {
         await _journalService.updateJournalEntry(
           widget.entryId!,
           _titleController.text,
           _contentController.text,
-          _selectedMood,
-          folderId: _selectedFolderId,
-        );
-      } else {
-        await _journalService.createJournalEntry(
-          _titleController.text,
-          _contentController.text,
-          _selectedMood,
+          moodToSave, // Use non-nullable mood
           folderId: _selectedFolderId,
         );
       }
@@ -165,7 +147,7 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DB), // Light cream background
+      backgroundColor: const Color(0xFFF5F5DB),
       body: SafeArea(
         child: Column(
           children: [
@@ -269,7 +251,7 @@ class _JournalEntryPageState extends State<JournalEntryPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Mood: $_selectedMood',
+                                'Mood: ${_selectedMood ?? 'Neutral'}',
                                 style: const TextStyle(
                                   color: Color(0xFF9C834F),
                                   fontSize: 12,

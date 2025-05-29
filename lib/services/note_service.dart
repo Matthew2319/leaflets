@@ -1,26 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/note.dart';
-import 'auth_service.dart';
 
 class NoteService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final AuthService _authService = AuthService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   static const String _collectionName = 'tbl_note_entries';
   
-  // Get current user ID from SharedPreferences
-  Future<String?> _getCurrentUserId() async {
-    final currentUser = await _authService.getCurrentUser();
-    return currentUser?.uid;
+  String _getCheckedCurrentUserId() {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('User not logged in. Cannot perform note operations.');
+    }
+    return userId;
   }
 
   // Get notes stream
   Stream<List<Note>> getNotes({String? folderId}) async* {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) {
-      yield [];
-      return;
-    }
+    final userId = _getCheckedCurrentUserId();
 
     Query query = _firestore
         .collection(_collectionName)
@@ -46,9 +43,7 @@ class NoteService {
     String? folderId,
     bool isBookmark = false,
   }) async {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) throw Exception('User not authenticated');
+    final userId = _getCheckedCurrentUserId();
 
     final note = Note(
       id: '',
@@ -71,9 +66,7 @@ class NoteService {
     String? folderId,
     bool? isBookmark,
   }) async {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) throw Exception('User not authenticated');
+    final userId = _getCheckedCurrentUserId();
 
     final data = {
       'title': title,
@@ -113,12 +106,7 @@ class NoteService {
 
   // Get archived notes
   Stream<List<Note>> getArchivedNotes() async* {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) {
-      yield [];
-      return;
-    }
+    final userId = _getCheckedCurrentUserId();
 
     yield* _firestore
         .collection(_collectionName)

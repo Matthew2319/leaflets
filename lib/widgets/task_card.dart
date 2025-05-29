@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/task.dart';
 
 class TaskCard extends StatelessWidget {
@@ -96,7 +95,7 @@ class TaskCard extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        'Delete \"${task.title}\"?\\nItem will be moved to Recently Deleted.',
+                                        'Delete "${task.title}"?\\nItem will be moved to Recently Deleted.',
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
                                           fontSize: 14,

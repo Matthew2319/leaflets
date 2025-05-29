@@ -1,26 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/journal_entry.dart';
-import 'auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class JournalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final AuthService _authService = AuthService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   static const String _collectionName = 'tbl_journal_entries';
   
-  // Get current user ID from SharedPreferences
-  Future<String?> _getCurrentUserId() async {
-    final currentUser = await _authService.getCurrentUser();
-    return currentUser?.uid;
+  // Get current user ID or throw exception if not logged in
+  String _getCheckedCurrentUserId() {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('User not logged in. Cannot perform journal operations.');
+    }
+    return userId;
   }
 
   // Get journal entries stream
   Stream<List<JournalEntry>> getJournalEntries({String? folderId}) async* {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) {
-      yield [];
-      return;
-    }
+    final userId = _getCheckedCurrentUserId();
 
     Query query = _firestore
         .collection(_collectionName)
@@ -47,9 +45,7 @@ class JournalService {
     String? folderId,
     bool isBookmark = false,
   }) async {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) throw Exception('User not authenticated');
+    final userId = _getCheckedCurrentUserId();
 
     final entry = JournalEntry(
       id: '',
@@ -74,9 +70,7 @@ class JournalService {
     String? folderId,
     bool? isBookmark,
   }) async {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) throw Exception('User not authenticated');
+    final userId = _getCheckedCurrentUserId();
 
     final data = {
       'title': title,
@@ -110,12 +104,7 @@ class JournalService {
 
   // Get archived entries
   Stream<List<JournalEntry>> getArchivedEntries() async* {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) {
-      yield [];
-      return;
-    }
+    final userId = _getCheckedCurrentUserId();
 
     yield* _firestore
         .collection(_collectionName)
@@ -151,9 +140,7 @@ class JournalService {
 
   // Delete entries that have been in archive for more than 30 days
   Future<void> cleanupOldArchivedEntries() async {
-    final currentUser = await _authService.getCurrentUser();
-    final userId = currentUser?.uid;
-    if (userId == null) return;
+    final userId = _getCheckedCurrentUserId();
 
     final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
     

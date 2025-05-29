@@ -7,6 +7,8 @@ import '../services/note_service.dart';
 import '../widgets/move_entry_dialog.dart';
 import 'note_entry_page.dart';
 import 'folders_page.dart';
+import 'package:leaflets/widgets/custom_search_bar.dart';
+import 'package:leaflets/widgets/custom_page_header.dart';
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});
@@ -185,22 +187,6 @@ class _NotesPageState extends State<NotesPage> {
     }
   }
 
-  void _navigateToFolders() async {
-    final selectedFolderId = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FoldersPage(
-          folderType: FolderType.note,
-          title: 'NOTE FOLDERS',
-        ),
-      ),
-    );
-    
-    if (selectedFolderId != null) {
-      _selectFolder(selectedFolderId);
-    }
-  }
-
   void _navigateToNoteEntry(Note? note) {
     Navigator.push(
       context,
@@ -234,7 +220,20 @@ class _NotesPageState extends State<NotesPage> {
         child: Column(
           children: [
             // Header
-            _buildHeader(),
+            CustomPageHeader(
+              pageTitle: 'NOTES',
+              onFolderIconPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FoldersPage(
+                      folderType: FolderType.note,
+                      title: 'NOTE FOLDERS',
+                    ),
+                  ),
+                );
+              },
+            ),
             
             // Folder tabs
             Padding(
@@ -254,61 +253,14 @@ class _NotesPageState extends State<NotesPage> {
             ),
             
             // Search bar
-            _buildSearchBar(),
-            
-            // Navigation bar
-            // _buildNavigationBar(), // REMOVED
+            CustomSearchBar(
+              controller: _searchController,
+              onChanged: _filterNotes,
+              hintText: 'Search for Leaves',
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  //LOGO AND PAGE NAME
-  Widget _buildHeader() {
-    return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 8,
-          children: [
-            Image.asset('assets/logo/LoginLogo.png',
-              height: 52,
-              width: 52,
-            ),
-            const Text(
-              'NOTES',
-              style: TextStyle(
-                color: Color(0xFF9C834F),
-                fontSize: 40,
-                fontFamily: 'Inria Sans',
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1.60,
-              ),
-            ),
-            const SizedBox(width: 84),
-            IconButton(
-              icon: const Icon(
-                Icons.folder_outlined,
-                color: Color(0xFF9C834F),
-                size: 32,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FoldersPage(
-                      folderType: FolderType.note,
-                      title: 'NOTE FOLDERS',
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
     );
   }
 
@@ -545,226 +497,4 @@ class _NotesPageState extends State<NotesPage> {
       },
     );
   }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Container(
-        width: 249,
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: ShapeDecoration(
-          color: const Color(0xFFF5F5DB),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(
-              width: 1.5,
-              color: Color(0xFF9C834F),
-            ),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x3F000000),
-              blurRadius: 4,
-              offset: Offset(0, 4),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.search,
-              color: Color(0x7F9C834F),
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                onChanged: _filterNotes,
-                style: const TextStyle(
-                  fontFamily: 'Inria Sans',
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.24,
-                  color: Colors.black,
-                ),
-                decoration: const InputDecoration(
-                  isCollapsed: true,
-                  border: InputBorder.none,
-                  hintText: 'Search for Leaves',
-                  hintStyle: TextStyle(
-                    color: Color(0x7F9C834F),
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    fontFamily: 'Inria Sans',
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: -0.24,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget _buildNavigationBar() {
-  //   return Container(
-  //     margin: const EdgeInsets.all(16.0),
-  //     height: 60,
-  //     decoration: BoxDecoration(
-  //       color: const Color(0xFF9C834F),
-  //       borderRadius: BorderRadius.circular(30),
-  //     ),
-  //     child: Row(
-  //       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-  //       children: [
-  //         IconButton(
-  //           icon: Icon(Icons.book, color: Colors.white),
-  //           onPressed: () {
-  //             Navigator.pushReplacementNamed(context, '/journal');
-  //           },
-  //         ),
-  //         IconButton(
-  //           icon: Icon(Icons.description, color: Colors.white),
-  //           onPressed: () {
-  //             // Already on notes page
-  //           },
-  //         ),
-  //         Container(
-  //           width: 50,
-  //           height: 50,
-  //           decoration: BoxDecoration(
-  //             color: Colors.white,
-  //             shape: BoxShape.circle,
-  //           ),
-  //           child: IconButton(
-  //             icon: Icon(
-  //               Icons.add,
-  //               color: const Color(0xFF9C834F),
-  //               size: 30,
-  //             ),
-  //             onPressed: () {
-  //               // Navigate to create note page
-  //             },
-  //           ),
-  //         ),
-  //         IconButton(
-  //           icon: Icon(Icons.check_box, color: Colors.white),
-  //           onPressed: () {
-  //             // Navigate to tasks page
-  //             Navigator.pushReplacementNamed(context, '/tasks');
-  //           },
-  //         ),
-  //         IconButton(
-  //           icon: Icon(Icons.person, color: Colors.white),
-  //           onPressed: () {
-  //             // Navigate to profile page
-  //           },
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-//NAVIGATION BAR
-  // Widget _buildNavigationBar() { // ENTIRE METHOD REMOVED
-  //   return SizedBox(
-  //     width: 320,
-  //     height: 65,
-  //     child: Stack(
-  //       children: [
-  //         // Background bar with 4 icons
-  //         Positioned(
-  //           bottom:12.0, // move it up from the screen edge
-  //           left: 0,
-  //           top: 11,
-  //           child: Container(
-  //             height: 54,
-  //             width: 320,
-  //             padding: const EdgeInsets.symmetric(horizontal: 28),
-  //             decoration: ShapeDecoration(
-  //               color: const Color(0xFF9C834F),
-  //               shape: RoundedRectangleBorder(
-  //                 borderRadius: BorderRadius.circular(40),
-  //               ),
-  //               shadows: const [
-  //                 BoxShadow(
-  //                   color: Color(0x3F000000),
-  //                   blurRadius: 4,
-  //                   offset: Offset(0, 4),
-  //                   spreadRadius: 0,
-  //                 ),
-  //               ],
-  //             ),
-  //             child: Row(
-  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //               children: [
-  //                 IconButton(
-  //                   icon: const Icon(Icons.menu_book, color: Color(0xFFF5F5DB), size: 24),
-  //                   onPressed: () {
-  //                     Navigator.pushReplacementNamed(context, '/journal');
-  //                   },
-  //                 ),
-  //                 IconButton(
-  //                   icon: const Icon(Icons.description, color: Color(0xFFF5F5DB), size: 24),
-  //                   onPressed: () {
-  //                     Navigator.pushReplacementNamed(context, '/notes');
-  //                   },
-  //                 ),
-  //                 const SizedBox(width: 48), // space for center button
-  //                 IconButton(
-  //                   icon: const Icon(Icons.assignment, color: Color(0xFFF5F5DB), size: 24),
-  //                   onPressed: () {
-  //                     Navigator.pushReplacementNamed(context, '/tasks');
-  //                   },
-  //                 ),
-  //                 IconButton(
-  //                   icon: const Icon(Icons.person_outline, color: Color(0xFFF5F5DB), size: 24),
-  //                   onPressed: () {},
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //         ),
-  //         // Center floating action button
-  //         Positioned(
-  //           left: 136,
-  //           top: 0,
-  //           child: Container(
-  //             width: 48,
-  //             height: 48,
-  //             decoration: const ShapeDecoration(
-  //               color: Color(0xFFF5F5DB),
-  //               shape: OvalBorder(
-  //                 side: BorderSide(
-  //                   width: 1.5,
-  //                   color: Color(0xFF9C834F),
-  //                 ),
-  //               ),
-  //             ),
-  //             child: Center(
-  //               child: IconButton(
-  //                 icon: const Icon(Icons.add, color: Color(0xFF9C834F), size: 24),
-  //                 onPressed: () {
-  //                   Navigator.push(
-  //                     context,
-  //                     MaterialPageRoute(builder: (context) => const NoteEntryPage()),
-  //                   );
-  //                 },
-  //               ),
-  //             ),
-  //           ),
-  //         ),
-  //         const SizedBox(
-  //           height: 10,
-  //         )
-  //       ],
-  //     ),
-  //   );
-  // }
 }

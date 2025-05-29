@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import '../services/task_service.dart';
-import '../models/folder.dart'; // For FolderType, though not used for selection yet
+// For FolderType, though not used for selection yet
 // import '../services/folder_service.dart'; // For fetching folders if needed later
 
 class TaskEntryPage extends StatefulWidget {
@@ -234,7 +234,6 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
       final title = _titleController.text.trim();
       final description = _descriptionController.text.trim();
       
-      // Determine if all subtasks are completed
       bool allSubtasksCompleted = _subTasks.isNotEmpty && _subTasks.every((st) => st.isCompleted);
       bool finalIsCompleted = _subTasks.isEmpty ? (widget.task?.isCompleted ?? false) : allSubtasksCompleted;
 
@@ -258,19 +257,10 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
             folderId: _selectedFolderId,
             subTasks: _subTasks,
           );
-          // For new tasks, isCompleted will be based on subtasks or default to false by model if no subtasks
-           if (_subTasks.isNotEmpty) {
-             // This logic is a bit complex here. create_task in service doesn't take isCompleted.
-             // The Task model defaults isCompleted to false.
-             // If we want a new task with subtasks to reflect completion status immediately,
-             // we might need an extra update or ensure model handles this.
-             // For now, the service call updateSubTasks (if we were to call it separately) handles parent task completion.
-             // Let's rely on the fact that updateTask does take isCompleted.
-             // If creating, the initial state is fine, subtask changes will trigger updates.
-           }
         }
+
         if (mounted) {
-          Navigator.pop(context); // Go back after saving
+          Navigator.pop(context);
         }
       } catch (e) {
         if (mounted) {
@@ -344,7 +334,7 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
+                          const Text(
                             'Due Date:',
                             style: TextStyle(fontSize: 16, color: Color(0xFF9C834F), fontWeight: FontWeight.w500),
                           ),
@@ -516,8 +506,8 @@ class _TaskEntryPageState extends State<TaskEntryPage> {
                             width: 20, height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9C834F))),
                           )
-                        : Row( // Changed to Row for Icon + Text
-                            children: const [
+                        : const Row( // Changed to Row for Icon + Text
+                            children: [
                               Icon(Icons.check_circle_outline, size: 20), // Icon added
                         SizedBox(width: 4),
                               Text('Done', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),

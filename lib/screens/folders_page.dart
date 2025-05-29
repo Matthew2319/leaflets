@@ -162,7 +162,7 @@ class _FoldersPageState extends State<FoldersPage> {
   }
 
   void _handleFolderTap(String folderId) {
-    // Pop back to journal page with selected folder
+    // Balik ka JournalPage with selected folder
     Navigator.pop(context, folderId);
   }
 

@@ -67,7 +67,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await prefs.setString('email', userData['email']);
 
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
+        // Clear navigation stack and replace with MainScreen
+        Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
       }
     } catch (e) {
       if (mounted) {

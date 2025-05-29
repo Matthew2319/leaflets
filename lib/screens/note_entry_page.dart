@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/note.dart';
 import '../services/note_service.dart';
 
 class NoteEntryPage extends StatefulWidget {

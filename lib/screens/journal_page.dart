@@ -7,6 +7,8 @@ import '../services/folder_service.dart';
 import '../widgets/move_entry_dialog.dart';
 import 'journal_entry_page.dart';
 import 'folders_page.dart';
+import 'package:leaflets/widgets/custom_search_bar.dart';
+import 'package:leaflets/widgets/custom_page_header.dart';
 
 class JournalPage extends StatefulWidget {
   const JournalPage({super.key});
@@ -131,7 +133,7 @@ class _JournalPageState extends State<JournalPage> {
     final selectedFolderId = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (context) => FoldersPage(
+        builder: (context) => const FoldersPage(
           folderType: FolderType.journal,
           title: 'JOURNAL FOLDERS',
         ),
@@ -235,39 +237,9 @@ class _JournalPageState extends State<JournalPage> {
         child: Column(
           children: [
             // Header with folder button
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Image.asset(
-                    'assets/logo/LoginLogo.png',
-                    height: 52,
-                    width: 52,
-                  ),
-                  const Text(
-                    'JOURNALS',
-                    style: TextStyle(
-                      color: Color(0xFF9C834F),
-                      fontSize: 40,
-                      fontFamily: 'Inria Sans',
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -1.60,
-                    ),
-                  ),
-                  const SizedBox(width: 84),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.folder_outlined,
-                      color: Color(0xFF9C834F),
-                      size: 32,
-                    ),
-                    onPressed: _navigateToFolders,
-                  ),
-                ],
-              ),
+            CustomPageHeader(
+              pageTitle: 'JOURNALS',
+              onFolderIconPressed: _navigateToFolders,
             ),
             
             // Folder tabs
@@ -288,54 +260,16 @@ class _JournalPageState extends State<JournalPage> {
             ),
             
             // Search bar
-            _buildSearchBar(),
+            CustomSearchBar(
+              controller: _searchController,
+              onChanged: _filterEntries,
+              hintText: 'Search for Leaves',
+            ),
           ],
         ),
       ),
     );
   }
-
-
-  //LOGO AND PAGE NAME
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          Image.asset('assets/logo/LoginLogo.png',
-            height: 52,
-            width: 52,
-          ),
-          const Text(
-            'JOURNALS',
-            style: TextStyle(
-              color: Color(0xFF9C834F),
-              fontSize: 40,
-              fontFamily: 'Inria Sans',
-              fontWeight: FontWeight.w700,
-              letterSpacing: -1.60,
-            ),
-          ),
-          const SizedBox(width: 84),
-          IconButton(
-            icon: const Icon(
-              Icons.folder_outlined,
-              color: Color(0xFF9C834F),
-              size: 32,
-            ),
-            onPressed: () {
-              Navigator.pushNamed(context, '/folders');
-            },
-          ),
-        ],
-      )
-    );
-  }
-
 
   //IF EMPTY WILL SHOW THIS
   Widget _buildEmptyState() {
@@ -434,7 +368,7 @@ class _JournalPageState extends State<JournalPage> {
           const SizedBox(
             width: 296,
             child: Text(
-              'Create your personal journal.     Tap the plus button to get started.',
+              'Create your personal journal. Tap the plus button to get started.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF333333),
@@ -472,73 +406,6 @@ class _JournalPageState extends State<JournalPage> {
         );
       },
       itemCount: displayedEntries.length,
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Container(
-        width: 249,
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: ShapeDecoration(
-          color: const Color(0xFFF5F5DB),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(
-              width: 1.5,
-              color: Color(0xFF9C834F),
-            ),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x3F000000),
-              blurRadius: 4,
-              offset: Offset(0, 4),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.search,
-              color: Color(0x7F9C834F),
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                onChanged: _filterEntries,
-                style: const TextStyle(
-                  fontFamily: 'Inria Sans',
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.24,
-                  color: Colors.black,
-                ),
-                decoration: const InputDecoration(
-                  isCollapsed: true,
-                  border: InputBorder.none,
-                  hintText: 'Search for Leaves',
-                  hintStyle: TextStyle(
-                    color: Color(0x7F9C834F),
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
-                    fontFamily: 'Inria Sans',
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: -0.24,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

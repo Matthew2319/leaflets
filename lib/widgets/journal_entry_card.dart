@@ -29,7 +29,6 @@ class JournalEntryCard extends StatefulWidget {
 
 class _JournalEntryCardState extends State<JournalEntryCard> {
   final double _actionButtonWidth = 60.0;
-  final int _numButtons = 3;
   final double _slideOffset = -0.45;
 
   bool get _isActionsVisible => journalCardController.activeCardId == widget.entry.id;

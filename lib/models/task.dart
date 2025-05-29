@@ -28,6 +28,16 @@ class Task {
   // Convert Firestore document to Task object
   factory Task.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    
+    // Handle server timestamp
+    DateTime createdAt;
+    final createdAtData = data['createdAt'];
+    if (createdAtData is Timestamp) {
+      createdAt = createdAtData.toDate();
+    } else {
+      createdAt = DateTime.now(); // Fallback if timestamp is not available
+    }
+
     var subTasksFromFirestore = data['subTasks'] as List<dynamic>?;
     List<SubTask> parsedSubTasks = subTasksFromFirestore != null
         ? subTasksFromFirestore.map((subTaskData) => SubTask.fromMap(subTaskData as Map<String, dynamic>)).toList()
@@ -39,11 +49,11 @@ class Task {
       description: data['description'] as String?,
       isCompleted: data['isCompleted'] ?? false,
       dueDate: (data['dueDate'] as Timestamp?)?.toDate(),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: createdAt,
       folderId: data['folderId'] as String?,
       userId: data['userId'] ?? '',
       isArchived: data['isArchived'] ?? false,
-      subTasks: parsedSubTasks, // Added
+      subTasks: parsedSubTasks,
     );
   }
 

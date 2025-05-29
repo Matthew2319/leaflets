@@ -1,4 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+// Removed: import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Current user data structure
@@ -15,7 +16,17 @@ class CurrentUser {
 }
 
 class AuthService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _firebaseAuth;
+  // final FirebaseFirestore _firestore; // Remove unused field
+
+  AuthService(this._firebaseAuth); // Update constructor
+
+  // Constructor (can also be initialized with FirebaseAuth.instance directly)
+  // AuthService({FirebaseAuth? firebaseAuth, FirebaseFirestore? firestore}) 
+  //   : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+  //     _firestore = firestore ?? FirebaseFirestore.instance;
+
+  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
   // Get current user from SharedPreferences
   Future<CurrentUser?> getCurrentUser() async {

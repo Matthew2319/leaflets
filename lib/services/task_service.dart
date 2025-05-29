@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
 import 'auth_service.dart'; // Assuming you have AuthService for user ID
+import 'package:firebase_auth/firebase_auth.dart'; // Added import
 
 class TaskService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final AuthService _authService = AuthService(); // For getting current user
-  static const String _collectionName = 'tbl_tasks'; // Firestore collection name
+  final AuthService _authService = AuthService(FirebaseAuth.instance); // For getting current user
+  static const String _collectionName = 'tbl_task_entries'; // Firestore collection name
 
   // Helper to get current user ID
   Future<String?> _getCurrentUserId() async {
@@ -14,26 +15,25 @@ class TaskService {
   }
 
   // Get tasks stream (for a specific folder or all non-archived tasks)
-  Stream<List<Task>> getTasks({String? folderId}) async* {
-    final userId = await _getCurrentUserId();
-    if (userId == null) {
-      yield []; // No user, no tasks
-      return;
-    }
+  Stream<List<Task>> getTasks({String? folderId}) {
+    return _authService.getCurrentUser().asStream().asyncExpand((currentUser) {
+      if (currentUser == null) return Stream.value([]);
 
-    Query query = _firestore
-        .collection(_collectionName)
-        .where('userId', isEqualTo: userId)
-        .where('isArchived', isEqualTo: false) // Exclude archived tasks by default
-        .orderBy('createdAt', descending: true);
+      Query query = _firestore
+          .collection(_collectionName)
+          .where('userId', isEqualTo: currentUser.uid)
+          .where('isArchived', isEqualTo: false);
 
-    if (folderId != null && folderId != 'all') {
-      query = query.where('folderId', isEqualTo: folderId);
-    }
-    // If folderId is 'all', no additional folder filter is applied.
+      if (folderId != null && folderId != 'all') {
+        query = query.where('folderId', isEqualTo: folderId);
+      }
 
-    yield* query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
+      // Add orderBy after all where clauses
+      query = query.orderBy('createdAt', descending: true);
+
+      return query.snapshots().map((snapshot) {
+        return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
+      });
     });
   }
 
@@ -48,20 +48,25 @@ class TaskService {
     final userId = await _getCurrentUserId();
     if (userId == null) throw Exception('User not authenticated to create task');
 
-    final newTask = Task(
-      id: '', // Firestore will generate ID
-      title: title,
-      description: description,
-      isCompleted: false,
-      dueDate: dueDate,
-      createdAt: DateTime.now(),
-      folderId: folderId,
-      userId: userId,
-      isArchived: false,
-      subTasks: subTasks,
-    );
+    final timestamp = FieldValue.serverTimestamp(); // Use server timestamp
+    final newTask = {
+      'title': title,
+      'description': description,
+      'isCompleted': false,
+      'dueDate': dueDate != null ? Timestamp.fromDate(dueDate) : null,
+      'createdAt': timestamp,
+      'folderId': folderId,
+      'userId': userId,
+      'isArchived': false,
+      'subTasks': subTasks.map((st) => st.toMap()).toList(),
+    };
 
-    await _firestore.collection(_collectionName).add(newTask.toMap());
+    try {
+      await _firestore.collection(_collectionName).add(newTask);
+    } catch (e) {
+      print('Error creating task: $e');
+      throw Exception('Failed to create task: $e');
+    }
   }
 
   // Update an existing task

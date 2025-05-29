@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import '../models/folder.dart';
@@ -7,6 +8,8 @@ import '../widgets/task_card.dart';
 import '../widgets/move_entry_dialog.dart'; // Re-use for moving tasks
 import 'task_entry_page.dart';
 import 'folders_page.dart'; // For managing task folders
+import 'package:leaflets/widgets/custom_search_bar.dart';
+import 'package:leaflets/widgets/custom_page_header.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -18,69 +21,118 @@ class TasksPage extends StatefulWidget {
 class _TasksPageState extends State<TasksPage> {
   final TaskService _taskService = TaskService();
   final FolderService _folderService = FolderService();
-  List<Task> _allTasks = []; // All tasks for counting and filtering
-  List<Task> _currentFolderTasks = []; // Tasks in the selected folder
-  List<Task> _filteredTasks = []; // Search filtered tasks
+  List<Task> _allTasks = [];
+  List<Task> _currentFolderTasks = [];
+  List<Task> _filteredTasks = [];
   List<Folder> _folders = [];
-  String? _selectedFolderId; // null for 'All' tasks
+  String? _selectedFolderId;
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
+
+  StreamSubscription? _foldersSubscription;
+  StreamSubscription? _allTasksSubscription;
+  StreamSubscription? _currentFolderTasksSubscription;
 
   @override
   void initState() {
     super.initState();
     _subscribeToFolders();
-    _subscribeToAllTasks(); // For counts
-    _subscribeToCurrentFolderTasks(); // For display
+    _subscribeToAllTasks();
+    _subscribeToCurrentFolderTasks();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _cancelSubscriptions();
     super.dispose();
   }
 
+  void _cancelSubscriptions() {
+    _foldersSubscription?.cancel();
+    _allTasksSubscription?.cancel();
+    _currentFolderTasksSubscription?.cancel();
+  }
+
   void _subscribeToFolders() {
-    _folderService.getFolders(type: FolderType.task).listen(
+    _foldersSubscription?.cancel();
+    _foldersSubscription = _folderService.getFolders(type: FolderType.task).listen(
       (folders) {
-        if (mounted) setState(() => _folders = folders);
+        if (mounted) {
+          setState(() => _folders = folders);
+        }
       },
       onError: (error) {
         print('Error loading task folders: $error');
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading task folders: $error')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error loading task folders: $error')),
+          );
+        }
       },
     );
   }
 
   void _subscribeToAllTasks() {
-    _taskService.getTasks().listen( // Gets all non-archived tasks for the user
-      (tasks) {
-        if (mounted) setState(() => _allTasks = tasks);
-      },
-      onError: (error) => print('Error loading all tasks for counts: $error'),
-    );
+    _allTasksSubscription?.cancel();
+    try {
+      _allTasksSubscription = _taskService.getTasks().listen(
+        (tasks) {
+          if (mounted) {
+            setState(() {
+              _allTasks = tasks;
+              print('All tasks updated: ${tasks.length} tasks'); // Debug log
+            });
+          }
+        },
+        onError: (error) {
+          print('Error loading all tasks: $error');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error loading tasks: $error')),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      print('Error subscribing to all tasks: $e');
+    }
   }
 
   void _subscribeToCurrentFolderTasks() {
-    setState(() => _isLoading = true);
-    _taskService.getTasks(folderId: _selectedFolderId).listen(
-      (tasks) {
-        if (mounted) {
-          setState(() {
-            _currentFolderTasks = tasks;
-            _filterTasks(_searchController.text); // Apply current search filter
-            _isLoading = false;
-          });
-        }
-      },
-      onError: (error) {
-        print('Error loading tasks for folder $_selectedFolderId: $error');
-        if (mounted) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading tasks: $error')));
-        }
-      },
-    );
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
+    
+    _currentFolderTasksSubscription?.cancel();
+    try {
+      _currentFolderTasksSubscription = _taskService.getTasks(folderId: _selectedFolderId).listen(
+        (tasks) {
+          if (mounted) {
+            setState(() {
+              _currentFolderTasks = tasks;
+              _filterTasks(_searchController.text);
+              _isLoading = false;
+              print('Current folder tasks updated: ${tasks.length} tasks'); // Debug log
+            });
+          }
+        },
+        onError: (error) {
+          print('Error loading tasks for folder $_selectedFolderId: $error');
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error loading tasks: $error')),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      print('Error subscribing to current folder tasks: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _filterTasks(String query) {
@@ -100,28 +152,35 @@ class _TasksPageState extends State<TasksPage> {
   void _selectFolder(String? folderId) {
     setState(() {
       _selectedFolderId = folderId;
-      _searchController.clear(); // Clear search on folder change
+      _searchController.clear();
+      _isLoading = true;
     });
+    _currentFolderTasksSubscription?.cancel();
     _subscribeToCurrentFolderTasks();
   }
 
-  void _navigateToTaskEntry(Task? task) {
-    Navigator.push(
+  void _navigateToTaskEntry(Task? task) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => TaskEntryPage(
-          task: task, // Pass task if editing, null if new
-          currentFolderId: _selectedFolderId, // Pass current folder for new tasks
+          task: task,
+          currentFolderId: _selectedFolderId,
         ),
       ),
     );
+    // Refresh streams when returning from task entry
+    if (mounted) {
+      _subscribeToAllTasks();
+      _subscribeToCurrentFolderTasks();
+    }
   }
 
   void _navigateToFoldersPage() async {
     final newSelectedFolderId = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (context) => FoldersPage(
+        builder: (context) => const FoldersPage(
           folderType: FolderType.task,
           title: 'TASK FOLDERS',
         ),
@@ -205,12 +264,15 @@ class _TasksPageState extends State<TasksPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFB3DB85), // Light green background
+      backgroundColor: const Color(0xFFB3DB85),
       body: SafeArea(
         child: Column(
           children: [
             // Header
-            _buildHeader(),
+            CustomPageHeader(
+              pageTitle: 'TASKS',
+              onFolderIconPressed: _navigateToFoldersPage,
+            ),
             // Folder Tabs
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -226,36 +288,13 @@ class _TasksPageState extends State<TasksPage> {
                       : _buildTaskList(),
             ),
             // Search Bar
-            _buildSearchBar(),
+            CustomSearchBar(
+              controller: _searchController,
+              onChanged: _filterTasks,
+              hintText: 'Search for Tasks...',
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Image.asset('assets/logo/LoginLogo.png', height: 52, width: 52),
-          const SizedBox(width: 12),
-          const Text(
-            'TASKS',
-            style: TextStyle(
-              color: Color(0xFF9C834F),
-              fontSize: 40,
-              fontFamily: 'Inria Sans',
-              fontWeight: FontWeight.w700,
-              letterSpacing: -1.60,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.folder_outlined, color: Color(0xFF9C834F), size: 32),
-            onPressed: _navigateToFoldersPage,
-          ),
-        ],
       ),
     );
   }
@@ -323,21 +362,99 @@ class _TasksPageState extends State<TasksPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Image.asset(
-            'assets/images/TasksIllus.png', // Replace with your tasks illustration
-            height: 200,
-            errorBuilder: (context, error, stackTrace) => 
-              const Icon(Icons.check_circle_outline, size: 100, color: Color(0xFF9C834F)),
+            'assets/images/TasksIllus.png', // Ensure you have this image or update path
+            height: 240,
+            errorBuilder: (context, error, stackTrace) {
+              // Placeholder if image is missing, similar to JournalPage
+              return Container(
+                height: 240,
+                width: 240,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF9C834F)),
+                ),
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline, // Task-related icon
+                        size: 80,
+                        color: Color(0xFF9C834F),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        "Tasks Illustration",
+                        style: TextStyle(
+                          color: Color(0xFF9C834F),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'No Tasks Yet',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF333333)),
+          const SizedBox(height: 24), // Added spacing like in Journals/Notes
+          const SizedBox(
+            width: 296,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Start your', // Consistent title start
+                      style: TextStyle(
+                        color: Color(0xFF333333),
+                        fontSize: 36,
+                        fontFamily: 'Inria Sans',
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -1.44,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' ',
+                      style: TextStyle(
+                        color: Color(0xFF333333),
+                        fontSize: 36,
+                        fontFamily: 'Inria Sans',
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -1.44,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'Productivity', // Changed from "Journey" to be task-specific
+                      style: TextStyle(
+                        color: Color(0xFF9C834F),
+                        fontSize: 36,
+                        fontStyle: FontStyle.italic,
+                        fontFamily: 'Inria Sans',
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -1.44,
+                      ),
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Tap the + button to add your first task.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Colors.black54),
+          const SizedBox(height: 8), // Consistent spacing
+          const SizedBox(
+            width: 296,
+            child: Text(
+              'Add your tasks. Tap the plus button to get started.', // Updated subtitle
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF333333),
+                fontSize: 16,
+                fontFamily: 'Inria Sans',
+                fontWeight: FontWeight.w400,
+                letterSpacing: -0.64,
+              ),
+            ),
           ),
         ],
       ),
@@ -446,45 +563,6 @@ class _TasksPageState extends State<TasksPage> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.7, // Adjust width as needed
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: ShapeDecoration(
-          color: const Color(0xFFF5F5DB),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1.5, color: Color(0xFF9C834F)),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          shadows: const [BoxShadow(color: Color(0x3F000000), blurRadius: 4, offset: Offset(0, 4))],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Icon(Icons.search, color: Color(0x7F9C834F), size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                onChanged: _filterTasks,
-                style: const TextStyle(fontSize: 12, color: Colors.black),
-                decoration: const InputDecoration(
-                  isCollapsed: true,
-                  border: InputBorder.none,
-                  hintText: 'Search for Tasks...',
-                  hintStyle: TextStyle(color: Color(0x7F9C834F), fontSize: 12, fontStyle: FontStyle.italic),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
